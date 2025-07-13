@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "strict": true
+  },
+  "unstable": [
+    "sloppy-imports"
+  ],
+  "imports": {
+    "@std/datetime": "jsr:@std/datetime@^0.225.5",
+    "@std/media-types": "jsr:@std/media-types@^1.1.0",
+    "@std/path": "jsr:@std/path@^1.1.1"
+  }
+}

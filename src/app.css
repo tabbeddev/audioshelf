@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+* {
+  border-color: rgb(165, 173, 186);
+}
+
+a {
+  text-decoration: underline;
+
+  transition: all 200ms;
+}
+
+a:hover {
+  color: lightblue;
+
+  transition: all 200ms;
+}
+
+body {
+  background-color: rgb(51, 58, 68);
+  color: white;
+}
+
+.playbg {
+  background-color: rgb(74, 110, 160);
+  border-top: rgb(74, 98, 132) solid 0.5rem;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  background-color: rgb(44, 101, 180);
+  border: rgb(40, 88, 156) solid 0.25rem;
+  font-size: 13pt;
+
+  transition: all 200ms;
+}
+
+button:hover:not(:disabled) {
+  background-color: rgb(47, 103, 181);
+  border-color: rgb(43, 92, 161);
+
+  transition: all 200ms;
+}
+
+button:active:not(:disabled) {
+  background-color: rgb(39, 110, 209);
+
+  transition: all 200ms;
+  border-color: rgb(40, 96, 174);
+}
+
+button:disabled {
+  filter: grayscale(75%) brightness(115%);
+
+  transition: all 200ms;
+}
+
+button.secondary {
+  background-color: rgb(83, 97, 118);
+  border-color: rgb(63, 73, 89);
+
+  transition: all 200ms;
+}
+
+button.sm {
+  width: fit-content;
+  height: fit-content;
+  padding: 0.25rem;
+}
+
+input[type="text"] {
+  background-color: rgb(83, 97, 118);
+  border: rgb(72, 84, 101) solid 0.25rem;
+  border-radius: 0.75rem;
+  padding: 0.3rem 0.7rem;
+  font-size: 13pt;
+
+  margin-block: 0.5rem;
+
+  width: 100%;
+}
+
+.iconbtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.container {
+  width: fit-content;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.scnbg {
+  background-color: rgb(63, 73, 89);
+}
+
+.prmbg {
+  background-color: rgb(44, 101, 180);
+}
+
+.secondbg {
+  background-color: rgb(63, 73, 89);
+  padding: 1rem;
+  border-radius: 1rem;
+
+  box-shadow: 0.5rem 0.5rem rgba(96, 109, 130, 0.5);
+}
+
+/* Notifications */
+
+.not-bg {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  background-color: rgb(33, 76, 136);
+  border: rgb(28, 63, 113) solid 0.25rem;
+  min-width: 15rem;
+  max-width: 30rem;
+  border-radius: 1rem;
+  padding: 0.5rem;
+
+  box-shadow: 0.15rem 0.15rem rgba(90, 90, 90, 50%);
+
+  h1 {
+    line-height: 2.5rem;
+  }
+
+  hr {
+    color: rgb(77, 127, 197);
+  }
+}
+
+hr {
+  color: rgb(165, 173, 186);
+  height: revert;
+  margin-block: 0.5rem;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+  border-radius: 4px;
+  margin: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background-color: rgb(92, 102, 120);
+}
