@@ -1,11 +1,10 @@
 <script lang="ts">
-  import { BookAudio } from "@lucide/svelte";
   import type { Component } from "svelte";
 
-  const { Icon }: { Icon: Component } = $props();
+  const { Icon, size = 128, strokeWidth = 1 }: { Icon: Component; size?: number; strokeWidth?: number } = $props();
 </script>
 
-<div class="scnbg h-64 w-64 p-2 rounded-xl flex justify-center items-center">
+<div class="scnbg p-2 rounded-xl flex justify-center items-center" style:width={size / 8 + "rem"} style:height={size / 8 + "rem"}>
   <!-- TODO: Use real cover -->
-  <Icon size="128" strokeWidth="1" />
+  <Icon {size} {strokeWidth} />
 </div>

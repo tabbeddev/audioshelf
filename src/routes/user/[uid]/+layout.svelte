@@ -1,5 +1,17 @@
 <script lang="ts">
-  import { ArrowLeftRight, BookAudio, Loader, Music, Pause, Play, SkipBack, SkipForward } from "@lucide/svelte";
+  import {
+    ArrowLeftRight,
+    BookAudio,
+    ChevronDown,
+    ChevronUp,
+    Loader,
+    Music,
+    Pause,
+    Play,
+    Search,
+    SkipBack,
+    SkipForward,
+  } from "@lucide/svelte";
   import { onDestroy, onMount, type Snippet } from "svelte";
   import type { LayoutData } from "./$types";
   import { createAvatar } from "@dicebear/core";
@@ -7,6 +19,8 @@
   import { goto } from "$app/navigation";
   import pkg from "@prisma/client";
   import { secondStringify } from "$lib/util";
+  import Cover from "$lib/components/covers/cover.svelte";
+  import { getArtistsOfAlbum, getGenresOfAlbum } from "$lib/albumUtil";
 
   function onMessage(event: MessageEvent) {
     if (!player) return;
@@ -18,6 +32,16 @@
 
       doNotPlay = false;
       playAlbum({ albumid: data.albumid, position: data.position, titleid: data.starttitleid });
+    }
+  }
+
+  function onkeydown(event: KeyboardEvent) {
+    if (event.code === "Escape" && isSearching) isSearching = false;
+
+    if (event.code === "KeyF" && event.shiftKey && !isSearching) {
+      event.preventDefault();
+      isSearching = true;
+      (document.getElementById("globalsearch")! as HTMLInputElement).focus();
     }
   }
 
@@ -47,7 +71,8 @@
   }
 
   async function saveCurrentState() {
-    if (!player && currentIndex !== undefined) return console.warn("Player not ready");
+    if (!(player && currentIndex !== undefined && queue.length !== 0 && currentAlbum !== undefined))
+      return console.warn("Player not ready");
 
     const response = await fetch(`/api/users/${data.user.id}/playstate`, {
       method: "POST",
@@ -124,6 +149,9 @@
   let isSearching = $state(false);
   let searchTerm = $state("");
 
+  // Play
+  let isPoppedUp = $state(false);
+
   onMount(() => {
     player = new Audio();
     player.addEventListener("durationchange", () => {
@@ -137,9 +165,21 @@
     player.addEventListener("ended", () => {
       if (currentIndex === undefined) return;
 
-      if (currentIndex - 1 !== queue.length) {
+      if (currentIndex + 1 !== queue.length) {
         currentIndex++;
         playCurrentTitle();
+      } else {
+        fetch(`/api/users/${data.user.id}/playstate`, {
+          method: "DELETE",
+          body: JSON.stringify({ userid: data.user.id, albumid: currentAlbum }),
+        })
+          .then(async (d) => {
+            if (!d.ok)
+              postMessage({ type: "warning", title: "Failed to delete savestate", subtitle: (await d.json()).message } as App.Notification);
+          })
+          .catch(() => {
+            postMessage({ type: "warning", title: "Failed to delete savestate", subtitle: "Request error" } as App.Notification);
+          });
       }
     });
 
@@ -177,25 +217,149 @@
   });
 </script>
 
-<svelte:window onmessage={onMessage} />
+<svelte:window onmessage={onMessage} {onkeydown} />
 
-{#if isSearching}
+{#if isPoppedUp && player && queue.length > 0 && currentAlbum && albumMetadata && currentIndex !== undefined && currentTitle}
+  <div class="fixed mt-14 w-screen top-0 left-0 p-2 semiplaybg flex flex-col justify-center" style:height="calc(100vh - 3.5rem)">
+    <div class="flex flex-col items-center text-center">
+      <Cover Icon={BookAudio} />
+      <p class="text-xl font-semibold mt-1">{currentTitle.title}</p>
+      <a
+        class="font-medium my-2"
+        href={`/user/${data.user.id}/album/${currentAlbum}`}
+        onclick={() => {
+          isPoppedUp = false;
+        }}>{currentTitle.album}</a
+      >
+      <input type="range" class="w-11/12 mt-2" max={Math.round(duration ?? 0)} value={currentTime ?? 0} onchange={seek} />
+
+      <div class="flex gap-2 justify-between w-11/12 text-lg">
+        <span>{currentTime === undefined ? "--:--" : secondStringify(currentTime)}</span>
+        <span>{duration === undefined ? "--:--" : secondStringify(duration)}</span>
+      </div>
+
+      <div class="flex gap-1 items-center justify-center">
+        <button
+          class="iconbtn sm"
+          disabled={currentIndex === 0}
+          onclick={() => {
+            currentIndex!--;
+            playCurrentTitle();
+          }}
+        >
+          <SkipBack strokeWidth="1.5" size="40" />
+        </button>
+        <button
+          class="iconbtn sm"
+          onclick={() => {
+            player!.paused ? ((doNotPlay = false), player!.play()) : player!.pause();
+          }}
+          disabled={currentState === State.Buffering}
+        >
+          {#if currentState === State.Paused}
+            <Play size="48" strokeWidth="1.75" />
+          {:else if currentState === State.Playing}
+            <Pause size="48" strokeWidth="1.75" />
+          {:else}
+            <Loader size="48" strokeWidth="1.75" />
+          {/if}
+        </button>
+        <button
+          class="iconbtn sm"
+          disabled={currentIndex + 1 === queue.length}
+          onclick={() => {
+            currentIndex!++;
+            playCurrentTitle();
+          }}
+        >
+          <SkipForward strokeWidth="1.5" size="40" />
+        </button>
+      </div>
+
+      <button
+        class="iconbtn secondary mt-2"
+        onclick={() => {
+          isPoppedUp = false;
+        }}
+      >
+        <ChevronDown />
+        Close
+      </button>
+    </div>
+  </div>
+{:else if isSearching && searchTerm}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
-    class="fixed mt-14 w-screen h-screen top-0 left-0 px-6 pt-6 flex-col gap-2"
+    class="fixed mt-14 w-screen top-0 left-0 px-6 pt-6 flex flex-col gap-6 overflow-scroll"
     style:background-color="rgba(0,0,0,75%)"
-    onmouseleave={() => {
+    style:height="calc(100vh - 7.5rem)"
+    onclick={() => {
       isSearching = false;
     }}
   >
     <div class="secondbg">
-      {#if searchTerm}
-        <h1 class="text-2xl">Search results for: <span class="font-semibold">{searchTerm}</span></h1>
-        <hr />
-      {:else}
-        <h1 class="text-2xl font-bold">Search for your favorite audiobooks or a title from one</h1>
-      {/if}
+      <h1 class="text-2xl iconbtn">
+        <Search />
+        Search results for: <span class="font-semibold">{searchTerm}</span>
+      </h1>
     </div>
+    {#await fetch("/api/search?q=" + searchTerm)}
+      <div class="secondbg">
+        <p>Searching...</p>
+      </div>
+    {:then response}
+      {#await response.json()}
+        <div class="secondbg">
+          <p>Loading...</p>
+        </div>
+      {:then json: Data.SearchResult}
+        <div class="secondbg">
+          <h1 class="text-2xl font-semibold">Albums:</h1>
+          <hr />
+          {#if json.albums.length === 0}
+            <p class="text-xl">No search results found.</p>
+          {:else}
+            {#each json.albums.slice(0, 10).toSorted((a, b) => a.name.localeCompare(b.name)) as album}
+              <button
+                class="secondary flex gap-2 items-center w-full text-lef text-leftt"
+                onclick={() => {
+                  goto(`/user/${data.user.id}/album/${album.id}`);
+                  searchTerm = "";
+                }}
+              >
+                <Cover Icon={BookAudio} size={24} strokeWidth={1.5} />
+                <span class="font-semibold">{album.name}</span>
+                {/* @ts-ignore */ null}
+                <span>({getGenresOfAlbum(album)}) by {getArtistsOfAlbum(album)} ({album._count.titles} titles)</span>
+              </button>
+            {/each}
+          {/if}
+        </div>
+
+        <div class="secondbg">
+          <h1 class="text-2xl font-semibold">Titles:</h1>
+          <hr />
+          {#if json.titles.length === 0}
+            <p class="text-xl">No search results found.</p>
+          {:else}
+            {#each json.titles.slice(0, 15).toSorted((a, b) => a.title.localeCompare(b.title)) as title}
+              <button
+                class="secondary flex gap-2 items-center w-full text-left"
+                onclick={() => {
+                  postMessage({ type: "playAlbum", albumid: title.album_entry.id, starttitleid: title.id } as App.PlayRequest);
+                  searchTerm = "";
+                }}
+              >
+                <Cover Icon={Music} size={16} strokeWidth={1.75} />
+                <span class="font-semibold">{title.title}</span>
+                <span>({title.album}) by {title.artist} [{secondStringify(title.length)}]</span>
+              </button>
+            {/each}
+          {/if}
+        </div>
+      {/await}
+    {/await}
   </div>
 {/if}
 
@@ -203,116 +367,131 @@
   {@render children()}
 </main>
 
-<div class="scnbg h-14 w-full fixed left-0 top-0 flex justify-center items-center">
-  <div class="w-2/3 flex justify-center items-center">
-    <p class="flex items-center gap-1 text-2xl fixed left-8">
-      <BookAudio size="36" strokeWidth="1.25" />
-      AudioShelf
-    </p>
-    <input
-      type="text"
-      placeholder="Search for your favorite books..."
-      class="w-1/2!"
-      onfocusin={() => {
-        isSearching = true;
+<div class="scnbg h-14 w-full fixed left-0 top-0 flex justify-center gap-2 items-center">
+  <p class="flex items-center gap-1 text-2xl fixed left-8">
+    <BookAudio size="36" strokeWidth="1.25" />
+    AudioShelf
+  </p>
+  <Search />
+  <input
+    type="text"
+    placeholder="[Shift + F] Search for your favorite books..."
+    class="w-1/4!"
+    id="globalsearch"
+    onfocusin={() => {
+      isSearching = true;
+    }}
+    onchange={() => {
+      isSearching = true;
+    }}
+    bind:value={searchTerm}
+  />
+  <div class="flex gap-2 items-center text-xl fixed right-8">
+    <button
+      class="iconbtn sm secondary border-2 p-1.5! pl-2! text-xl!"
+      title="Switch user"
+      id="switch-btn"
+      onmouseleave={() => {
+        isHovering = false;
       }}
-      onchange={() => {
-        isSearching = true;
+      onmouseenter={() => {
+        isHovering = true;
       }}
-      bind:value={searchTerm}
-    />
-    <div class="flex gap-2 items-center text-xl fixed right-8">
-      <button
-        class="iconbtn sm secondary border-2 p-1.5! pl-2! text-xl!"
-        title="Switch user"
-        id="switch-btn"
-        onmouseleave={() => {
-          isHovering = false;
-        }}
-        onmouseenter={() => {
-          isHovering = true;
-        }}
-        onclick={() => {
-          goto("/");
-        }}
-      >
-        {#if isHovering}
-          <ArrowLeftRight />
-          <span class="font-medium">Switch user</span>
-        {:else}
-          {data.user.username}
-        {/if}
-        {@html createAvatar(shapes, {
-          seed: data.user.username,
-          size: 36,
-          radius: 8,
-        }).toString()}
-      </button>
+      onclick={() => {
+        goto("/");
+      }}
+    >
+      {#if isHovering}
+        <ArrowLeftRight />
+        <span class="font-medium">Switch user</span>
+      {:else}
+        {data.user.username}
+      {/if}
+      {@html createAvatar(shapes, {
+        seed: data.user.username,
+        size: 36,
+        radius: 8,
+      }).toString()}
+    </button>not-[
 
-      <a href={"/user/" + data.user.id}>Audiobooks</a>
-    </div>
+    <a href={"/user/" + data.user.id}>Audiobooks</a>
+    {#if data.user.isadmin}
+      <a href={`/user/${data.user.id}/admin`}>Admin Settings</a>
+    {/if}
   </div>
 </div>
 
-<div class="playbg h-16 w-full fixed left-0 bottom-0 flex items-center justify-center">
-  {#if !player}
-    <p class="text-xl font-semibold">Loading...</p>
-  {:else if queue.length > 0 && currentAlbum && albumMetadata && currentIndex !== undefined && currentTitle}
-    <div class="fixed left-2">
-      <p class="font-bold text-xl iconbtn">
-        <Music size="20" />
-        {currentTitle.title}
-      </p>
-      <a class="font-medium text-lg" href={`/user/${data.user.id}/album/${currentAlbum}`}>{currentTitle.album}</a>
-    </div>
+{#if !isPoppedUp}
+  <div class="playbg h-16 w-full fixed left-0 bottom-0 flex items-center justify-between px-2">
+    {#if !player}
+      <p class="text-xl font-semibold">Loading...</p>
+      fixed right-2
+    {:else if queue.length > 0 && currentAlbum && albumMetadata && currentIndex !== undefined && currentTitle}
+      <div>
+        <p class="font-bold text-xl iconbtn">
+          <Music size="20" class="shrink-0" />
+          {currentTitle.title}
+        </p>
+        <a class="font-medium text-lg hidden md:block" href={`/user/${data.user.id}/album/${currentAlbum}`}>{currentTitle.album}</a>
+      </div>
 
-    <div class="flex gap-1 items-center">
-      <button
-        class="iconbtn sm"
-        disabled={currentIndex === 0}
-        onclick={() => {
-          currentIndex!--;
-          playCurrentTitle();
-        }}
-      >
-        <SkipBack strokeWidth="1.5" />
-      </button>
-      <button
-        class="iconbtn sm"
-        onclick={() => {
-          player!.paused ? ((doNotPlay = false), player!.play()) : player!.pause();
-        }}
-        disabled={currentState === State.Buffering}
-      >
-        {#if currentState === State.Paused}
-          <Play size="32" strokeWidth="1.75" />
-        {:else if currentState === State.Playing}
-          <Pause size="32" strokeWidth="1.75" />
-        {:else}
-          <Loader size="32" strokeWidth="1.75" />
-        {/if}
-      </button>
-      <button
-        class="iconbtn sm"
-        disabled={currentIndex - 1 === queue.length}
-        onclick={() => {
-          currentIndex!++;
-          playCurrentTitle();
-        }}
-      >
-        <SkipForward strokeWidth="1.5" />
-      </button>
-    </div>
+      <div class="flex gap-1 items-center lg:fixed lg:left-1/2 lg:-translate-x-1/2">
+        <button
+          class="gap-2 items-center sm hidden md:flex"
+          disabled={currentIndex === 0}
+          onclick={() => {
+            currentIndex!--;
+            playCurrentTitle();
+          }}
+        >
+          <SkipBack strokeWidth="1.5" />
+        </button>
+        <button
+          class="iconbtn sm"
+          onclick={() => {
+            player!.paused ? ((doNotPlay = false), player!.play()) : player!.pause();
+          }}
+          disabled={currentState === State.Buffering}
+        >
+          {#if currentState === State.Paused}
+            <Play size="32" strokeWidth="1.75" />
+          {:else if currentState === State.Playing}
+            <Pause size="32" strokeWidth="1.75" />
+          {:else}
+            <Loader size="32" strokeWidth="1.75" />
+          {/if}
+        </button>
+        <button
+          class="gap-2 items-center sm hidden md:flex"
+          disabled={currentIndex + 1 === queue.length}
+          onclick={() => {
+            currentIndex!++;
+            playCurrentTitle();
+          }}
+        >
+          <SkipForward strokeWidth="1.5" />
+        </button>
 
-    <div class="flex gap-2 items-center fixed right-2 justify-end">
-      <span class="text-xl">{currentTime === undefined ? "--:--" : secondStringify(currentTime)}</span>
-      <input type="range" class="w-[20vw]" max={Math.round(duration ?? 0)} value={currentTime ?? 0} onchange={seek} />
-      <span class="text-xl">{duration === undefined ? "--:--" : secondStringify(duration)}</span>
-    </div>
-  {:else}
-    <div class="text-center">
-      <p class="text-xl font-semibold">Welcome to AudioShelf!</p>
-      <p>Start by playing one of your Audiobook.</p>
-    </div>
-  {/if}
-</div>
+        <button
+          class="gap-2 items-center sm flex md:hidden secondary"
+          onclick={() => {
+            isPoppedUp = true;
+          }}
+        >
+          <ChevronUp strokeWidth="1.5" />
+        </button>
+      </div>
+
+      <div class="lg:flex gap-2 items-center justify-end hidden">
+        <span class="text-xl">{currentTime === undefined ? "--:--" : secondStringify(currentTime)}</span>
+        <input type="range" class="w-[20vw]" max={Math.round(duration ?? 0)} value={currentTime ?? 0} onchange={seek} />
+        <span class="text-xl">{duration === undefined ? "--:--" : secondStringify(duration)}</span>
+      </div>
+    {:else}
+      <div class="text-center">
+        <p class="text-xl font-semibold">Welcome to AudioShelf!</p>
+        <p>Start by playing one of your Audiobook.</p>
+      </div>
+    {/if}
+  </div>
+{/if}

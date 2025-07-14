@@ -33,3 +33,29 @@ export const POST: RequestHandler = async ({ request, params }) => {
 
   return new Response();
 };
+
+export const DELETE: RequestHandler = async ({ request, params }) => {
+  // State validation
+  const { albumid }: { albumid: number } = await request.json();
+
+  if (!albumid) return error(400, { message: "No albumid specified" });
+
+  // User validation
+  const { uid } = params;
+  try {
+    Number(uid);
+  } catch {
+    return error(400, { message: "Invalid uid" });
+  }
+
+  const user = await db.user.findUnique({
+    where: { id: Number(uid) },
+  });
+  if (!user) return error(404, { message: "Unknown user" });
+
+  const userid = Number(uid);
+
+  await db.saveState.delete({ where: { userid_albumid: { userid, albumid } } });
+
+  return new Response();
+};

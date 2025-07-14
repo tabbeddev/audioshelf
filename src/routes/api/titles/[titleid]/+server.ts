@@ -49,7 +49,7 @@ export const GET: RequestHandler = async ({ request, params }) => {
       pull(controller) {
         file.seekSync(start, Deno.SeekMode.Start);
 
-        const buffer = new Uint8Array(5192);
+        const buffer = new Uint8Array(51920);
         const bytesRead = file.readSync(buffer);
 
         if (bytesRead === null || start > end) {
@@ -79,6 +79,7 @@ export const GET: RequestHandler = async ({ request, params }) => {
         "Content-Length": (end - start + 1).toString(),
         "Content-Range": `bytes ${start}-${end}/${fileSize}`,
         "Accept-Ranges": "bytes",
+        "Cache-Control": "public, max-age=3600",
       },
     });
   } catch (err) {

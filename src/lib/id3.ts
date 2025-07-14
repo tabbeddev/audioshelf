@@ -1,6 +1,7 @@
 import { Reader } from "jsmediatags";
 import type { TagType } from "jsmediatags/types";
 import { getAudioDurationInSeconds } from "get-audio-duration";
+import { basename } from "@std/path";
 
 export const readMediaTags = (path: string): Promise<TagType> =>
   new Promise((resolve, reject) => {
@@ -18,7 +19,7 @@ export async function transformTags(path: string, tags: TagType): Promise<Data.T
   const pathPieces = path.substring(1).split("/");
 
   return {
-    title: tags.tags.title ?? pathPieces[pathPieces.length - 1],
+    title: tags.tags.title ?? basename(path),
     artist: tags.tags.artist ?? pathPieces[pathPieces.length - 3],
     album: tags.tags.album ?? pathPieces[pathPieces.length - 2],
     track: tags.tags.track,

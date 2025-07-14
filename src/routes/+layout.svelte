@@ -30,6 +30,9 @@
 </script>
 
 <svelte:window {onmessage} />
+<svelte:head>
+  <title>AudioShelf</title>
+</svelte:head>
 
 {@render children()}
 

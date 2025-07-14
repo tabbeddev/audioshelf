@@ -9,6 +9,13 @@
 
   onMount(() => {
     scrapeRequest = fetch("/api/libraries/update", { method: "POST", body: JSON.stringify({ rebuild: true }) });
+    scrapeRequest
+      .then(async (d) => {
+        if (!d.ok) postMessage({ type: "error", title: "Failed to index the library", subtitle: await d.text() } as App.Notification);
+      })
+      .catch(() => {
+        postMessage({ type: "error", title: "Failed to index the library", subtitle: "Internal error" } as App.Notification);
+      });
   });
 </script>
 

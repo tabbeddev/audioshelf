@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getAlbumLength, getArtistsOfAlbum, listDiscs } from "$lib/albumUtil";
+  import { getAlbumLength, getArtistsOfAlbum, getGenresOfAlbum, listDiscs } from "$lib/albumUtil";
   import Cover from "$lib/components/covers/cover.svelte";
   import { secondStringify } from "$lib/util";
   import { BookAudio, Disc, Play } from "@lucide/svelte";
@@ -10,21 +10,27 @@
 
 {#if data.album}
   {@const discs = listDiscs(data.album.titles)}
-  <div class="flex p-6 gap-4">
+  <div class="flex flex-col md:flex-row p-6 gap-4 items-center">
     <Cover Icon={BookAudio} />
-    <div class="mt-2">
+    <div class="mt-2 text-center md:text-left">
       <h1 class="text-4xl font-bold">{data.album.name}</h1>
-      <p class="text-2xl font-medium">{getArtistsOfAlbum(data.album)}</p>
+      <p class="text-2xl font-light">
+        by
+        <span class="font-semibold">{getArtistsOfAlbum(data.album)}</span>
+      </p>
       <p class="text-xl">Dauer: {secondStringify(getAlbumLength(data.album))}</p>
-      <button
-        class="iconbtn mt-2"
-        onclick={() => {
-          postMessage({ albumid: data.album!.id, type: "playAlbum" } as App.PlayRequest);
-        }}
-      >
-        <Play />
-        Play
-      </button>
+      <p class="text-lg">Genre: {getGenresOfAlbum(data.album)}</p>
+      <div class="flex justify-center md:justify-normal">
+        <button
+          class="iconbtn mt-2"
+          onclick={() => {
+            postMessage({ albumid: data.album!.id, type: "playAlbum" } as App.PlayRequest);
+          }}
+        >
+          <Play />
+          Play
+        </button>
+      </div>
     </div>
   </div>
 

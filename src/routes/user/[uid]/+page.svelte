@@ -29,6 +29,7 @@
         <span class="w-64 font-light">{getArtistsOfAlbum(album)}</span>
         <div class="scnbg w-64 h-6 rounded-sm">
           <div class="prmbg h-full flex items-center justify-center rounded-sm" style:width={(elapsedTime / albumLength) * 100 + "%"}></div>
+					<!-- FIXME: Text sticks through the search box -->
           <div class="-translate-y-[95%] not-[]:">{secondStringify(elapsedTime)} / {secondStringify(getAlbumLength(album))}</div>
         </div>
       {/snippet}

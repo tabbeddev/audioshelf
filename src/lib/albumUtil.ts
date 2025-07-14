@@ -1,6 +1,7 @@
 import pkg from "@prisma/client";
 
 export const getArtistsOfAlbum = (album: Data.Album) => [...new Set(album.titles.map((v) => v.artist))].join(", ");
+export const getGenresOfAlbum = (album: Data.Album) => [...new Set(album.titles.map((v) => v.genre))].join(", ");
 
 export const getAlbumLength = (album: Data.Album) => album.titles.reduce((p, c) => p + c.length, 0);
 

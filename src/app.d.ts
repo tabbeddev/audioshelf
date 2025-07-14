@@ -30,6 +30,13 @@ declare global {
     }
 
     type Album = pkg.Album & { titles: pkg.Titles[] };
+
+    interface SearchResult {
+      albums: (pkg.Album & { _count: { titles: number } } & {
+        titles: { artist: string; length: number; genre: string }[];
+      })[];
+      titles: (pkg.Titles & { album_entry: { id: number } })[];
+    }
   }
 }
 

@@ -21,11 +21,6 @@ body {
   color: white;
 }
 
-.playbg {
-  background-color: rgb(74, 110, 160);
-  border-top: rgb(74, 98, 132) solid 0.5rem;
-}
-
 button {
   padding: 0.5rem 1rem;
   border-radius: 1rem;
@@ -155,4 +150,16 @@ hr {
 ::-webkit-scrollbar-thumb {
   border-radius: 4px;
   background-color: rgb(92, 102, 120);
+}
+
+/* Play bar */
+
+.playbg {
+  background-color: rgb(74, 110, 160);
+  border-top: rgb(74, 98, 132) solid 0.5rem;
+}
+
+.semiplaybg {
+  background-color: rgba(74, 110, 160, 50%);
+  backdrop-filter: blur(12px);
 }
