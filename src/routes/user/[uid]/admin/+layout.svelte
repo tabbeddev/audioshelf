@@ -9,8 +9,8 @@
   const rootPath = `/user/${data.user.id}/admin/`;
 </script>
 
-<div class="flex gap-4">
-  <div class="flex flex-col gap-1 border-r-2 p-2 pr-4 shrink-0">
+<div class="flex gap-4 max-md:flex-col">
+  <div class="flex flex-col gap-1 max-md:border-b-2 md:border-r-2 p-2 pb-4 md:pr-4 shrink-0">
     <span class="text-3xl font-medium">Admin Settings</span>
 
     <button class:secondary={!page.route.id?.endsWith("/admin")} class="iconbtn" onclick={() => goto(rootPath)}>

@@ -11,6 +11,7 @@
     Search,
     SkipBack,
     SkipForward,
+    Wrench,
   } from "@lucide/svelte";
   import { onDestroy, onMount, type Snippet } from "svelte";
   import type { LayoutData } from "./$types";
@@ -21,6 +22,7 @@
   import { secondStringify } from "$lib/util";
   import Cover from "$lib/components/covers/cover.svelte";
   import { getArtistsOfAlbum, getGenresOfAlbum } from "$lib/albumUtil";
+  import { MediaQuery } from "svelte/reactivity";
 
   function onMessage(event: MessageEvent) {
     if (!player) return;
@@ -152,6 +154,8 @@
   // Play
   let isPoppedUp = $state(false);
 
+  const large = new MediaQuery("width >= 64rem");
+
   onMount(() => {
     player = new Audio();
     player.addEventListener("durationchange", () => {
@@ -220,12 +224,14 @@
 <svelte:window onmessage={onMessage} {onkeydown} />
 
 {#if isPoppedUp && player && queue.length > 0 && currentAlbum && albumMetadata && currentIndex !== undefined && currentTitle}
-  <div class="fixed mt-14 w-screen top-0 left-0 p-2 semiplaybg flex flex-col justify-center" style:height="calc(100vh - 3.5rem)">
+  <!-- Fullscreen Player -->
+  <div class="fixed mt-14 w-screen top-0 left-0 p-2 semiplaybg flex flex-col justify-center z-20" style:height="calc(100vh - 3.5rem)">
     <div class="flex flex-col items-center text-center">
       <Cover Icon={BookAudio} />
       <p class="text-xl font-semibold mt-1">{currentTitle.title}</p>
+      <p class="text-xl">{currentTitle.artist}</p>
       <a
-        class="font-medium my-2"
+        class="font-medium my-2 text-lg"
         href={`/user/${data.user.id}/album/${currentAlbum}`}
         onclick={() => {
           isPoppedUp = false;
@@ -247,7 +253,7 @@
             playCurrentTitle();
           }}
         >
-          <SkipBack strokeWidth="1.5" size="40" />
+          <SkipBack strokeWidth="1.5" size="40" fill="currentColor" />
         </button>
         <button
           class="iconbtn sm"
@@ -257,9 +263,9 @@
           disabled={currentState === State.Buffering}
         >
           {#if currentState === State.Paused}
-            <Play size="48" strokeWidth="1.75" />
+            <Play size="48" strokeWidth="1.75" fill="currentColor" />
           {:else if currentState === State.Playing}
-            <Pause size="48" strokeWidth="1.75" />
+            <Pause size="48" strokeWidth="1.75" fill="currentColor" />
           {:else}
             <Loader size="48" strokeWidth="1.75" />
           {/if}
@@ -272,7 +278,7 @@
             playCurrentTitle();
           }}
         >
-          <SkipForward strokeWidth="1.5" size="40" />
+          <SkipForward strokeWidth="1.5" size="40" fill="currentColor" />
         </button>
       </div>
 
@@ -288,10 +294,11 @@
     </div>
   </div>
 {:else if isSearching && searchTerm}
+  <!-- Search box -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
-    class="fixed mt-14 w-screen top-0 left-0 px-6 pt-6 flex flex-col gap-6 overflow-scroll"
+    class="fixed mt-14 w-screen top-0 left-0 px-6 pt-6 flex flex-col gap-6 overflow-scroll z-20"
     style:background-color="rgba(0,0,0,75%)"
     style:height="calc(100vh - 7.5rem)"
     onclick={() => {
@@ -301,7 +308,7 @@
     <div class="secondbg">
       <h1 class="text-2xl iconbtn">
         <Search />
-        Search results for: <span class="font-semibold">{searchTerm}</span>
+        <p>Search results for: <span class="font-semibold">{searchTerm}</span></p>
       </h1>
     </div>
     {#await fetch("/api/search?q=" + searchTerm)}
@@ -322,16 +329,18 @@
           {:else}
             {#each json.albums.slice(0, 10).toSorted((a, b) => a.name.localeCompare(b.name)) as album}
               <button
-                class="secondary flex gap-2 items-center w-full text-lef text-leftt"
+                class="secondary flex gap-2 items-center w-full text-left"
                 onclick={() => {
                   goto(`/user/${data.user.id}/album/${album.id}`);
                   searchTerm = "";
                 }}
               >
                 <Cover Icon={BookAudio} size={24} strokeWidth={1.5} />
-                <span class="font-semibold">{album.name}</span>
-                {/* @ts-ignore */ null}
-                <span>({getGenresOfAlbum(album)}) by {getArtistsOfAlbum(album)} ({album._count.titles} titles)</span>
+                <div class="flex sm:gap-2 max-sm:flex-col">
+                  <span class="font-semibold">{album.name}</span>
+                  {/* @ts-ignore */ null}
+                  <span>({getGenresOfAlbum(album)}) by {getArtistsOfAlbum(album)} ({album._count.titles} titles)</span>
+                </div>
               </button>
             {/each}
           {/if}
@@ -352,8 +361,10 @@
                 }}
               >
                 <Cover Icon={Music} size={16} strokeWidth={1.75} />
-                <span class="font-semibold">{title.title}</span>
-                <span>({title.album}) by {title.artist} [{secondStringify(title.length)}]</span>
+                <div class="flex sm:gap-2 max-sm:flex-col">
+                  <span class="font-semibold">{title.title}</span>
+                  <span>({title.album}) by {title.artist} [{secondStringify(title.length)}]</span>
+                </div>
               </button>
             {/each}
           {/if}
@@ -367,28 +378,33 @@
   {@render children()}
 </main>
 
-<div class="scnbg h-14 w-full fixed left-0 top-0 flex justify-center gap-2 items-center">
-  <p class="flex items-center gap-1 text-2xl fixed left-8">
+<!-- Navbar -->
+<div class="scnbg h-14 w-full fixed left-0 top-0 flex justify-between gap-2 items-center">
+  <p class="hidden items-center gap-1 text-2xl ml-4 lg:flex">
     <BookAudio size="36" strokeWidth="1.25" />
     AudioShelf
   </p>
-  <Search />
-  <input
-    type="text"
-    placeholder="[Shift + F] Search for your favorite books..."
-    class="w-1/4!"
-    id="globalsearch"
-    onfocusin={() => {
-      isSearching = true;
-    }}
-    onchange={() => {
-      isSearching = true;
-    }}
-    bind:value={searchTerm}
-  />
-  <div class="flex gap-2 items-center text-xl fixed right-8">
+
+  <div class="flex items-center gap-1 max-lg:ml-4 max-md:w-full lg:fixed lg:left-1/2 lg:-translate-x-1/2">
+    <Search size="32" class="max-sm:hidden" />
+    <input
+      type="text"
+      placeholder="{large.current ? '[Shift + F] ' : ''}Search for your favorite books..."
+      id="globalsearch"
+      class="2xl:w-2xl! md:w-96!"
+      onfocusin={() => {
+        isSearching = true;
+      }}
+      onchange={() => {
+        isSearching = true;
+      }}
+      bind:value={searchTerm}
+    />
+  </div>
+
+  <div class="flex gap-0.5 lg:gap-2 items-center text-xl mr-4">
     <button
-      class="iconbtn sm secondary border-2 p-1.5! pl-2! text-xl!"
+      class="iconbtn sm secondary p-1.5! lg:pl-2! text-xl!"
       title="Switch user"
       id="switch-btn"
       onmouseleave={() => {
@@ -402,37 +418,50 @@
       }}
     >
       {#if isHovering}
-        <ArrowLeftRight />
-        <span class="font-medium">Switch user</span>
+        <ArrowLeftRight size="36" strokeWidth="1.5" />
       {:else}
-        {data.user.username}
+        {@html createAvatar(shapes, {
+          seed: data.user.username,
+          size: 36,
+          radius: 8,
+        }).toString()}
       {/if}
-      {@html createAvatar(shapes, {
-        seed: data.user.username,
-        size: 36,
-        radius: 8,
-      }).toString()}
-    </button>not-[
+    </button>
 
-    <a href={"/user/" + data.user.id}>Audiobooks</a>
+    <button
+      onclick={() => {
+        goto("/user/" + data.user.id);
+      }}
+      class="sm iconbtn secondary p-1.5!"
+    >
+      <BookAudio size="36" strokeWidth="1.5" />
+    </button>
+
     {#if data.user.isadmin}
-      <a href={`/user/${data.user.id}/admin`}>Admin Settings</a>
+      <button
+        onclick={() => {
+          goto(`/user/${data.user.id}/admin`);
+        }}
+        class="sm iconbtn secondary p-1.5!"
+      >
+        <Wrench size="36" strokeWidth="1.5" />
+      </button>
     {/if}
   </div>
 </div>
 
 {#if !isPoppedUp}
-  <div class="playbg h-16 w-full fixed left-0 bottom-0 flex items-center justify-between px-2">
+  <!-- Play bar -->
+  <div class="playbg h-16 w-full fixed left-0 bottom-0 flex items-center justify-between px-2 overflow-hidden">
     {#if !player}
       <p class="text-xl font-semibold">Loading...</p>
-      fixed right-2
     {:else if queue.length > 0 && currentAlbum && albumMetadata && currentIndex !== undefined && currentTitle}
       <div>
-        <p class="font-bold text-xl iconbtn">
+        <p class="font-medium md:font-bold text-xl iconbtn">
           <Music size="20" class="shrink-0" />
           {currentTitle.title}
         </p>
-        <a class="font-medium text-lg hidden md:block" href={`/user/${data.user.id}/album/${currentAlbum}`}>{currentTitle.album}</a>
+        <a class="font-medium text-lg max-md:hidden" href={`/user/${data.user.id}/album/${currentAlbum}`}>{currentTitle.album}</a>
       </div>
 
       <div class="flex gap-1 items-center lg:fixed lg:left-1/2 lg:-translate-x-1/2">
@@ -444,7 +473,7 @@
             playCurrentTitle();
           }}
         >
-          <SkipBack strokeWidth="1.5" />
+          <SkipBack strokeWidth="1.5" fill="currentColor" />
         </button>
         <button
           class="iconbtn sm"
@@ -454,9 +483,9 @@
           disabled={currentState === State.Buffering}
         >
           {#if currentState === State.Paused}
-            <Play size="32" strokeWidth="1.75" />
+            <Play size="32" strokeWidth="1.75" fill="currentColor" />
           {:else if currentState === State.Playing}
-            <Pause size="32" strokeWidth="1.75" />
+            <Pause size="32" strokeWidth="1.75" fill="currentColor" />
           {:else}
             <Loader size="32" strokeWidth="1.75" />
           {/if}
@@ -469,11 +498,11 @@
             playCurrentTitle();
           }}
         >
-          <SkipForward strokeWidth="1.5" />
+          <SkipForward strokeWidth="1.5" fill="currentColor" />
         </button>
 
         <button
-          class="gap-2 items-center sm flex md:hidden secondary"
+          class="gap-2 items-center sm flex secondary lg:hidden"
           onclick={() => {
             isPoppedUp = true;
           }}

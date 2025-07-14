@@ -3,16 +3,16 @@
   import Book from "$lib/components/covers/book.svelte";
   import CoverRow from "$lib/components/covers/coverRow.svelte";
   import { secondStringify } from "$lib/util";
+  import { BookAudio, BookOpen } from "@lucide/svelte";
   import type { LayoutData, PageData } from "./$types";
 
   let { data }: { data: PageData & LayoutData } = $props();
 </script>
 
-<h1 class="text-3xl font-bold">Audiobooks</h1>
-<CoverRow albums={data.allAlbums} />
-
-<hr />
-<h1 class="text-3xl font-bold">Continue from where you left off</h1>
+<h1 class="text-3xl font-medium iconbtn">
+  <BookOpen class="shrink-0" />
+  Continue from where you left off
+</h1>
 
 {#if data.states.length === 0}
   <p class="text-center font-bold text-2xl">There's nothing to continue from.</p>
@@ -28,9 +28,11 @@
         <span class="w-64 font-semibold">{album.name}</span>
         <span class="w-64 font-light">{getArtistsOfAlbum(album)}</span>
         <div class="scnbg w-64 h-6 rounded-sm">
-          <div class="prmbg h-full flex items-center justify-center rounded-sm" style:width={(elapsedTime / albumLength) * 100 + "%"}></div>
-					<!-- FIXME: Text sticks through the search box -->
-          <div class="-translate-y-[95%] not-[]:">{secondStringify(elapsedTime)} / {secondStringify(getAlbumLength(album))}</div>
+          <div
+            class="prmbg h-full flex items-center justify-center rounded-sm z-0"
+            style:width={(elapsedTime / albumLength) * 100 + "%"}
+          ></div>
+          <div class="-translate-y-[95%] z-10">{secondStringify(elapsedTime)} / {secondStringify(getAlbumLength(album))}</div>
         </div>
       {/snippet}
 
@@ -45,10 +47,18 @@
             starttitleid: state.titleid,
           } as App.PlayRequest);
         }}
-				hoverPlay={true}
+        hoverPlay={true}
       />
     {/each}
   </div>
 {/if}
+
+<hr />
+
+<h1 class="text-3xl font-medium iconbtn">
+  <BookAudio class="shrink-0" />
+  Audiobooks
+</h1>
+<CoverRow albums={data.allAlbums} />
 
 <hr />

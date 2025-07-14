@@ -80,6 +80,10 @@ input[type="text"] {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+
+  svg {
+    flex-shrink: 0;
+  }
 }
 
 .container {
@@ -162,4 +166,6 @@ hr {
 .semiplaybg {
   background-color: rgba(74, 110, 160, 50%);
   backdrop-filter: blur(12px);
+
+  text-shadow: 1px 2px black;
 }
