@@ -4,11 +4,11 @@
   import type { PageData } from "./$types";
   import { BookAudio, Wrench } from "@lucide/svelte";
   import { goto } from "$app/navigation";
-    import { MediaQuery } from "svelte/reactivity";
+  import { MediaQuery } from "svelte/reactivity";
 
   const { data }: { data: PageData } = $props();
 
-	const medium = new MediaQuery("width >= 48rem");
+  const medium = new MediaQuery("width >= 48rem");
 </script>
 
 <div class="-translate-1/2 top-1/5 left-1/2 absolute flex items-center gap-1 text-5xl font-light opacity-15 md:text-8xl">

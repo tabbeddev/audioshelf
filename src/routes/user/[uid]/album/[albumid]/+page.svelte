@@ -2,9 +2,10 @@
   import { getAlbumLength, getArtistsOfAlbum, getGenresOfAlbum, listDiscs } from "$lib/albumUtil";
   import Cover from "$lib/components/covers/cover.svelte";
   import { secondStringify } from "$lib/util";
-  import { BookAudio, Disc, Play } from "@lucide/svelte";
+  import { BookAudio, Disc, Download, Package, Play } from "@lucide/svelte";
   import type { PageData } from "./$types";
   import { MediaQuery } from "svelte/reactivity";
+  import { goto } from "$app/navigation";
 
   const { data }: { data: PageData } = $props();
 </script>
@@ -21,7 +22,7 @@
       </p>
       <p class="text-xl">Length: {secondStringify(getAlbumLength(data.album))}</p>
       <p class="text-lg">Genre: {getGenresOfAlbum(data.album)}</p>
-      <div class="flex justify-center md:justify-normal">
+      <div class="flex max-md:justify-center gap-2">
         <button
           class="iconbtn mt-2"
           onclick={() => {
@@ -30,6 +31,11 @@
         >
           <Play />
           Play
+        </button>
+
+        <button class="iconbtn mt-2 secondary" onclick={() => goto(`/api/albums/${data.album?.id}/download`)}>
+          <Download />
+          Download as Zip
         </button>
       </div>
     </div>

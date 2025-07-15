@@ -49,12 +49,19 @@
 
   function playCurrentTitle(position?: number) {
     if (!player) return console.warn("Player not ready");
+    console.log("Triggered CurrentTitle");
 
     player.src = "/api/titles/" + currentTitle!.id;
     if (position) player.currentTime = position;
     player.load();
 
-    document.title = `${currentTitle!.title} | ${currentTitle!.album}`;
+    if (mediaSessionAvailable && currentTitle) {
+      console.log("Updated Metadata");
+
+      navigator.mediaSession.metadata!.album = currentTitle.album;
+      navigator.mediaSession.metadata!.artist = currentTitle.artist;
+      navigator.mediaSession.metadata!.title = currentTitle.title;
+    }
   }
 
   async function playAlbum({ albumid, titleid, position }: { albumid: number; titleid?: number; position?: number }) {
@@ -160,6 +167,8 @@
   let isPoppedUp = $state(false);
   let repeating = $state(0);
 
+  let mediaSessionAvailable = false;
+
   const large = new MediaQuery("width >= 64rem");
 
   onMount(() => {
@@ -170,6 +179,12 @@
 
     player.addEventListener("timeupdate", () => {
       currentTime = player!.currentTime;
+
+      if (mediaSessionAvailable)
+        navigator.mediaSession.setPositionState({
+          duration,
+          position: currentTime,
+        });
     });
 
     player.addEventListener("ended", () => {
@@ -227,6 +242,45 @@
       }
     });
 
+    // Media Session API
+
+    mediaSessionAvailable = "mediaSession" in navigator;
+
+    if (mediaSessionAvailable) {
+      navigator.mediaSession.metadata = new MediaMetadata();
+      console.log("MediaMetadata initialized");
+
+      navigator.mediaSession.setActionHandler("play", () => {
+        if (!player) return;
+        player.play();
+      });
+
+      navigator.mediaSession.setActionHandler("pause", () => {
+        if (!player) return;
+        player.pause();
+      });
+
+      navigator.mediaSession.setActionHandler("nexttrack", () => {
+        if (!player || !currentIndex || currentIndex + 1 === queue.length) return;
+        currentIndex++;
+
+        playCurrentTitle();
+      });
+
+      navigator.mediaSession.setActionHandler("previoustrack", () => {
+        if (!player || !currentIndex || currentIndex === 0) return;
+        currentIndex--;
+
+        playCurrentTitle();
+      });
+
+      navigator.mediaSession.setActionHandler("seekto", (details) => {
+        if (!player || !details.seekTime) return;
+
+        player.currentTime = details.seekTime;
+      });
+    }
+
     // Resume last audiobook
 
     const lastState = data.states.find((v) => v.lastplayed);
@@ -234,6 +288,21 @@
     if (lastState) playAlbum(lastState);
 
     onDestroy(saveCurrentState);
+  });
+
+  $effect(() => {
+    if (!navigator.mediaSession.metadata) return;
+
+    switch (currentState) {
+      case State.Playing:
+        navigator.mediaSession.playbackState = "playing";
+
+      case State.Paused:
+        navigator.mediaSession.playbackState = "paused";
+
+      case State.Buffering:
+        navigator.mediaSession.playbackState = "none";
+    }
   });
 </script>
 
