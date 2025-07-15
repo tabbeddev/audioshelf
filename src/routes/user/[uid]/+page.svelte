@@ -9,14 +9,14 @@
   let { data }: { data: PageData & LayoutData } = $props();
 </script>
 
-<h1 class="text-3xl font-medium iconbtn">
+<h1 class="text-3xl font-medium iconbtn mb-2">
   <BookOpen class="shrink-0" />
-  Continue from where you left off
+  Started audiobooks
 </h1>
 
 {#if data.states.length === 0}
-  <p class="text-center font-bold text-2xl">There's nothing to continue from.</p>
-  <p class="text-center text-xl">Start an audiobook and you'll see it here.</p>
+  <p class="lg:text-center font-bold text-2xl">There's nothing to continue from.</p>
+  <p class="lg:text-center text-xl">Start an audiobook and you'll see it here.</p>
 {:else}
   <div class="overflow-x-scroll w-full flex p-2 mb-2 gap-2">
     {#each data.states as state}
@@ -55,7 +55,7 @@
 
 <hr />
 
-<h1 class="text-3xl font-medium iconbtn">
+<h1 class="text-3xl font-medium iconbtn mb-2">
   <BookAudio class="shrink-0" />
   Audiobooks
 </h1>

@@ -16,8 +16,8 @@
 {/snippet}
 
 {#if albums.length === 0}
-  <p class="text-center font-bold text-2xl">No audiobooks added.</p>
-  <p class="text-center text-xl">Add a library to add some.</p>
+  <p class="lg:text-center font-bold text-2xl">No audiobooks added.</p>
+  <p class="lg:text-center text-xl">Add a library to add some.</p>
 {:else}
   <div class="overflow-x-scroll w-full flex p-2 mb-2 gap-2 max-md:flex-col">
     {#each albums as album}

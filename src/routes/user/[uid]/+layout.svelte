@@ -12,6 +12,9 @@
     SkipBack,
     SkipForward,
     Wrench,
+    Repeat,
+    Repeat1,
+    ArrowRightToLine,
   } from "@lucide/svelte";
   import { onDestroy, onMount, type Snippet } from "svelte";
   import type { LayoutData } from "./$types";
@@ -29,9 +32,6 @@
 
     const data: App.Notification | App.PlayRequest = event.data;
     if (data.type === "playAlbum") {
-      console.log("PlayRequest receied:");
-      console.log(data);
-
       doNotPlay = false;
       playAlbum({ albumid: data.albumid, position: data.position, titleid: data.starttitleid });
     }
@@ -108,6 +108,11 @@
     player.currentTime = newTime;
   }
 
+  function toggleRepeat() {
+    repeating++;
+    if (repeating === 3) repeating = 0;
+  }
+
   enum State {
     Playing,
     Paused,
@@ -153,6 +158,7 @@
 
   // Play
   let isPoppedUp = $state(false);
+  let repeating = $state(0);
 
   const large = new MediaQuery("width >= 64rem");
 
@@ -169,26 +175,36 @@
     player.addEventListener("ended", () => {
       if (currentIndex === undefined) return;
 
-      if (currentIndex + 1 !== queue.length) {
+      if (repeating === 2) {
+        playCurrentTitle();
+      } else if (currentIndex + 1 !== queue.length) {
         currentIndex++;
         playCurrentTitle();
       } else {
-        fetch(`/api/users/${data.user.id}/playstate`, {
-          method: "DELETE",
-          body: JSON.stringify({ userid: data.user.id, albumid: currentAlbum }),
-        })
-          .then(async (d) => {
-            if (!d.ok)
-              postMessage({ type: "warning", title: "Failed to delete savestate", subtitle: (await d.json()).message } as App.Notification);
+        if (repeating === 1) {
+          currentIndex = 0;
+          playCurrentTitle();
+        } else {
+          fetch(`/api/users/${data.user.id}/playstate`, {
+            method: "DELETE",
+            body: JSON.stringify({ userid: data.user.id, albumid: currentAlbum }),
           })
-          .catch(() => {
-            postMessage({ type: "warning", title: "Failed to delete savestate", subtitle: "Request error" } as App.Notification);
-          });
+            .then(async (d) => {
+              if (!d.ok)
+                postMessage({
+                  type: "warning",
+                  title: "Failed to delete savestate",
+                  subtitle: (await d.json()).message,
+                } as App.Notification);
+            })
+            .catch(() => {
+              postMessage({ type: "warning", title: "Failed to delete savestate", subtitle: "Request error" } as App.Notification);
+            });
+        }
       }
     });
 
-    player.addEventListener("waiting", () => {
-      console.log(player!.currentTime);
+    player.addEventListener("loadstart", () => {
       currentState = State.Buffering;
     });
     player.addEventListener("play", () => {
@@ -245,6 +261,16 @@
       </div>
 
       <div class="flex gap-1 items-center justify-center">
+        <button class="iconbtn sm secondary mr-2" onclick={toggleRepeat}>
+          {#if repeating === 0}
+            <ArrowRightToLine strokeWidth="1.5" size="32" />
+          {:else if repeating === 1}
+            <Repeat strokeWidth="1.5" size="32" />
+          {:else}
+            <Repeat1 strokeWidth="1.5" size="32" />
+          {/if}
+        </button>
+
         <button
           class="iconbtn sm"
           disabled={currentIndex === 0}
@@ -255,6 +281,7 @@
         >
           <SkipBack strokeWidth="1.5" size="40" fill="currentColor" />
         </button>
+
         <button
           class="iconbtn sm"
           onclick={() => {
@@ -270,6 +297,7 @@
             <Loader size="48" strokeWidth="1.75" />
           {/if}
         </button>
+
         <button
           class="iconbtn sm"
           disabled={currentIndex + 1 === queue.length}
@@ -280,17 +308,16 @@
         >
           <SkipForward strokeWidth="1.5" size="40" fill="currentColor" />
         </button>
-      </div>
 
-      <button
-        class="iconbtn secondary mt-2"
-        onclick={() => {
-          isPoppedUp = false;
-        }}
-      >
-        <ChevronDown />
-        Close
-      </button>
+        <button
+          class="ml-2 iconbtn sm secondary"
+          onclick={() => {
+            isPoppedUp = false;
+          }}
+        >
+          <ChevronDown strokeWidth="1.5" size="32" />
+        </button>
+      </div>
     </div>
   </div>
 {:else if isSearching && searchTerm}
@@ -418,8 +445,16 @@
       }}
     >
       {#if isHovering}
+        {#if large.current}
+          <p class="font-medium">Switch user</p>
+        {/if}
+
         <ArrowLeftRight size="36" strokeWidth="1.5" />
       {:else}
+        {#if large.current}
+          <p>{data.user.username}</p>
+        {/if}
+
         {@html createAvatar(shapes, {
           seed: data.user.username,
           size: 36,
@@ -432,6 +467,7 @@
       onclick={() => {
         goto("/user/" + data.user.id);
       }}
+      title="Show all Audiobooks"
       class="sm iconbtn secondary p-1.5!"
     >
       <BookAudio size="36" strokeWidth="1.5" />
@@ -442,6 +478,7 @@
         onclick={() => {
           goto(`/user/${data.user.id}/admin`);
         }}
+        title="Open Admin Settings"
         class="sm iconbtn secondary p-1.5!"
       >
         <Wrench size="36" strokeWidth="1.5" />
@@ -465,8 +502,18 @@
       </div>
 
       <div class="flex gap-1 items-center lg:fixed lg:left-1/2 lg:-translate-x-1/2">
+        <button class="items-center sm hidden md:flex secondary" onclick={toggleRepeat}>
+          {#if repeating === 0}
+            <ArrowRightToLine strokeWidth="1.5" />
+          {:else if repeating === 1}
+            <Repeat strokeWidth="1.5" />
+          {:else}
+            <Repeat1 strokeWidth="1.5" />
+          {/if}
+        </button>
+
         <button
-          class="gap-2 items-center sm hidden md:flex"
+          class="items-center sm hidden md:flex"
           disabled={currentIndex === 0}
           onclick={() => {
             currentIndex!--;
@@ -475,6 +522,7 @@
         >
           <SkipBack strokeWidth="1.5" fill="currentColor" />
         </button>
+
         <button
           class="iconbtn sm"
           onclick={() => {
@@ -490,8 +538,9 @@
             <Loader size="32" strokeWidth="1.75" />
           {/if}
         </button>
+
         <button
-          class="gap-2 items-center sm hidden md:flex"
+          class="items-center sm hidden md:flex"
           disabled={currentIndex + 1 === queue.length}
           onclick={() => {
             currentIndex!++;
@@ -502,7 +551,7 @@
         </button>
 
         <button
-          class="gap-2 items-center sm flex secondary lg:hidden"
+          class="items-center sm flex secondary lg:hidden"
           onclick={() => {
             isPoppedUp = true;
           }}
@@ -511,13 +560,15 @@
         </button>
       </div>
 
-      <div class="lg:flex gap-2 items-center justify-end hidden">
-        <span class="text-xl">{currentTime === undefined ? "--:--" : secondStringify(currentTime)}</span>
-        <input type="range" class="w-[20vw]" max={Math.round(duration ?? 0)} value={currentTime ?? 0} onchange={seek} />
-        <span class="text-xl">{duration === undefined ? "--:--" : secondStringify(duration)}</span>
-      </div>
+      {#if large.current}
+        <div class="flex gap-2 items-center justify-end">
+          <span class="text-xl">{currentTime === undefined ? "--:--" : secondStringify(currentTime)}</span>
+          <input type="range" class="w-[20vw]" max={Math.round(duration ?? 0)} value={currentTime ?? 0} onchange={seek} />
+          <span class="text-xl">{duration === undefined ? "--:--" : secondStringify(duration)}</span>
+        </div>
+      {/if}
     {:else}
-      <div class="text-center">
+      <div>
         <p class="text-xl font-semibold">Welcome to AudioShelf!</p>
         <p>Start by playing one of your Audiobook.</p>
       </div>

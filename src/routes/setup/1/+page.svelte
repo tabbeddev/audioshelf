@@ -9,7 +9,7 @@
     event.preventDefault();
     pending = true;
 
-    const response = await fetch("/api/users/register", {
+    const response = await fetch("/api/users", {
       method: "POST",
       body: JSON.stringify({
         username,

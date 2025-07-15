@@ -1,25 +1,27 @@
 import { readMediaTags, transformTags } from "./id3.ts";
 import { db } from "./prisma.ts";
-import { basename, extname } from "jsr:@std/path";
+import { extname } from "jsr:@std/path";
 import { contentType } from "jsr:@std/media-types";
+import type { TagType } from "jsmediatags/types";
 
 async function addTitle(filePath: string) {
   console.log("Scraping -> " + filePath);
 
+  let rawMetadata;
   try {
-    const rawMetadata = await readMediaTags(filePath);
-    const metadata = await transformTags(filePath, rawMetadata);
-
-    await db.album.upsert({ update: {}, where: { name: metadata.album }, create: { name: metadata.album } });
-
-    await db.titles.upsert({
-      where: { path: filePath },
-      update: { ...metadata },
-      create: { ...metadata, path: filePath },
-    });
+    rawMetadata = await readMediaTags(filePath);
   } catch {
-    return console.warn(`Skipping -> ${basename(filePath)} - failed`);
+    rawMetadata = { tags: {} } as TagType;
   }
+  const metadata = await transformTags(filePath, rawMetadata);
+
+  await db.album.upsert({ update: {}, where: { name: metadata.album }, create: { name: metadata.album } });
+
+  await db.titles.upsert({
+    where: { path: filePath },
+    update: { ...metadata },
+    create: { ...metadata, path: filePath },
+  });
 }
 
 export async function scrapeLibraries(rebuild: boolean = false) {

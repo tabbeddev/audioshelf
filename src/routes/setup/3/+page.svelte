@@ -1,10 +1,8 @@
 <script lang="ts">
   import { ChevronRight } from "@lucide/svelte";
-  import type { PageData } from "./$types";
   import { goto } from "$app/navigation";
   import { onMount } from "svelte";
 
-  const { data }: { data: PageData } = $props();
   let scrapeRequest: Promise<Response> | undefined = $state();
 
   onMount(() => {
