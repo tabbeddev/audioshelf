@@ -239,95 +239,98 @@
 
 <svelte:window onmessage={onMessage} {onkeydown} />
 
-{#if isPoppedUp && player && queue.length > 0 && currentAlbum && albumMetadata && currentIndex !== undefined && currentTitle}
+{#if isPoppedUp && !(isSearching && searchTerm) && player && queue.length > 0 && currentAlbum && albumMetadata && currentIndex !== undefined && currentTitle}
   <!-- Fullscreen Player -->
   <div class="fixed mt-14 w-screen top-0 left-0 p-2 semiplaybg flex flex-col justify-center z-20" style:height="calc(100vh - 3.5rem)">
-    <div class="flex flex-col items-center text-center">
+    <div class="flex max-md:flex-col items-center md:justify-center gap-4">
       <Cover Icon={BookAudio} />
-      <p class="text-xl font-semibold mt-1">{currentTitle.title}</p>
-      <p class="text-xl">{currentTitle.artist}</p>
-      <a
-        class="font-medium my-2 text-lg"
-        href={`/user/${data.user.id}/album/${currentAlbum}`}
-        onclick={() => {
-          isPoppedUp = false;
-        }}>{currentTitle.album}</a
-      >
-      <input type="range" class="w-11/12 mt-2" max={Math.round(duration ?? 0)} value={currentTime ?? 0} onchange={seek} />
-
-      <div class="flex gap-2 justify-between w-11/12 text-lg">
-        <span>{currentTime === undefined ? "--:--" : secondStringify(currentTime)}</span>
-        <span>{duration === undefined ? "--:--" : secondStringify(duration)}</span>
-      </div>
-
-      <div class="flex gap-1 items-center justify-center">
-        <button class="iconbtn sm secondary mr-2" onclick={toggleRepeat}>
-          {#if repeating === 0}
-            <ArrowRightToLine strokeWidth="1.5" size="32" />
-          {:else if repeating === 1}
-            <Repeat strokeWidth="1.5" size="32" />
-          {:else}
-            <Repeat1 strokeWidth="1.5" size="32" />
-          {/if}
-        </button>
-
-        <button
-          class="iconbtn sm"
-          disabled={currentIndex === 0}
-          onclick={() => {
-            currentIndex!--;
-            playCurrentTitle();
-          }}
-        >
-          <SkipBack strokeWidth="1.5" size="40" fill="currentColor" />
-        </button>
-
-        <button
-          class="iconbtn sm"
-          onclick={() => {
-            player!.paused ? ((doNotPlay = false), player!.play()) : player!.pause();
-          }}
-          disabled={currentState === State.Buffering}
-        >
-          {#if currentState === State.Paused}
-            <Play size="48" strokeWidth="1.75" fill="currentColor" />
-          {:else if currentState === State.Playing}
-            <Pause size="48" strokeWidth="1.75" fill="currentColor" />
-          {:else}
-            <Loader size="48" strokeWidth="1.75" />
-          {/if}
-        </button>
-
-        <button
-          class="iconbtn sm"
-          disabled={currentIndex + 1 === queue.length}
-          onclick={() => {
-            currentIndex!++;
-            playCurrentTitle();
-          }}
-        >
-          <SkipForward strokeWidth="1.5" size="40" fill="currentColor" />
-        </button>
-
-        <button
-          class="ml-2 iconbtn sm secondary"
+      <div class="max-md:text-center flex flex-col max-md:items-center w-full md:w-3/5">
+        <p class="text-xl font-semibold">{currentTitle.title}</p>
+        <p class="text-xl">{currentTitle.artist}</p>
+        <a
+          class="font-medium my-2 text-lg"
+          href={`/user/${data.user.id}/album/${currentAlbum}`}
           onclick={() => {
             isPoppedUp = false;
-          }}
+          }}>{currentTitle.album}</a
         >
-          <ChevronDown strokeWidth="1.5" size="32" />
-        </button>
+        <input type="range" class="max-md:w-11/12 mt-2" max={Math.round(duration ?? 0)} value={currentTime ?? 0} onchange={seek} />
+
+        <div class="flex gap-2 justify-between max-md:w-11/12 text-lg">
+          <span>{currentTime === undefined ? "--:--" : secondStringify(currentTime)}</span>
+          <span>{duration === undefined ? "--:--" : secondStringify(duration)}</span>
+        </div>
+
+        <div class="flex gap-1 items-center max-md:justify-center">
+          <button class="iconbtn sm mr-2" onclick={toggleRepeat} class:secondary={repeating === 0}>
+            {#if repeating === 0}
+              <ArrowRightToLine strokeWidth="1.5" size="32" />
+            {:else if repeating === 1}
+              <Repeat strokeWidth="1.5" size="32" />
+            {:else}
+              <Repeat1 strokeWidth="1.5" size="32" />
+            {/if}
+          </button>
+
+          <button
+            class="iconbtn sm"
+            disabled={currentIndex === 0}
+            onclick={() => {
+              currentIndex!--;
+              playCurrentTitle();
+            }}
+          >
+            <SkipBack strokeWidth="1.5" size="40" fill="currentColor" />
+          </button>
+
+          <button
+            class="iconbtn sm"
+            onclick={() => {
+              player!.paused ? ((doNotPlay = false), player!.play()) : player!.pause();
+            }}
+            disabled={currentState === State.Buffering}
+          >
+            {#if currentState === State.Paused}
+              <Play size="48" strokeWidth="1.75" fill="currentColor" />
+            {:else if currentState === State.Playing}
+              <Pause size="48" strokeWidth="1.75" fill="currentColor" />
+            {:else}
+              <Loader size="48" strokeWidth="1.75" class="animate-spin" />
+            {/if}
+          </button>
+
+          <button
+            class="iconbtn sm"
+            disabled={currentIndex + 1 === queue.length}
+            onclick={() => {
+              currentIndex!++;
+              playCurrentTitle();
+            }}
+          >
+            <SkipForward strokeWidth="1.5" size="40" fill="currentColor" />
+          </button>
+
+          <button
+            class="ml-2 iconbtn sm secondary"
+            onclick={() => {
+              isPoppedUp = false;
+            }}
+          >
+            <ChevronDown strokeWidth="1.5" size="32" />
+          </button>
+        </div>
       </div>
     </div>
   </div>
-{:else if isSearching && searchTerm}
+{/if}
+{#if isSearching && searchTerm}
   <!-- Search box -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
     class="fixed mt-14 w-screen top-0 left-0 px-6 pt-6 flex flex-col gap-6 overflow-scroll z-20"
     style:background-color="rgba(0,0,0,75%)"
-    style:height="calc(100vh - 7.5rem)"
+    style:height="calc(100vh - {isPoppedUp && !(isSearching && searchTerm) ? 3.5 : 7.5}rem)"
     onclick={() => {
       isSearching = false;
     }}
@@ -487,7 +490,7 @@
   </div>
 </div>
 
-{#if !isPoppedUp}
+{#if !isPoppedUp || (isSearching && searchTerm)}
   <!-- Play bar -->
   <div class="playbg h-16 w-full fixed left-0 bottom-0 flex items-center justify-between px-2 overflow-hidden">
     {#if !player}
@@ -502,7 +505,7 @@
       </div>
 
       <div class="flex gap-1 items-center lg:fixed lg:left-1/2 lg:-translate-x-1/2">
-        <button class="items-center sm hidden md:flex secondary" onclick={toggleRepeat}>
+        <button class="items-center sm hidden md:flex" onclick={toggleRepeat} class:secondary={repeating === 0}>
           {#if repeating === 0}
             <ArrowRightToLine strokeWidth="1.5" />
           {:else if repeating === 1}
@@ -535,7 +538,7 @@
           {:else if currentState === State.Playing}
             <Pause size="32" strokeWidth="1.75" fill="currentColor" />
           {:else}
-            <Loader size="32" strokeWidth="1.75" />
+            <Loader size="32" strokeWidth="1.75" class="animate-spin" />
           {/if}
         </button>
 
@@ -550,14 +553,16 @@
           <SkipForward strokeWidth="1.5" fill="currentColor" />
         </button>
 
-        <button
-          class="items-center sm flex secondary lg:hidden"
-          onclick={() => {
-            isPoppedUp = true;
-          }}
-        >
-          <ChevronUp strokeWidth="1.5" />
-        </button>
+        {#if !large.current && !(isSearching && searchTerm)}
+          <button
+            class="items-center sm flex secondary"
+            onclick={() => {
+              isPoppedUp = true;
+            }}
+          >
+            <ChevronUp strokeWidth="1.5" />
+          </button>
+        {/if}
       </div>
 
       {#if large.current}
