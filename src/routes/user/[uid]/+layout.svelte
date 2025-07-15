@@ -553,7 +553,7 @@
           <SkipForward strokeWidth="1.5" fill="currentColor" />
         </button>
 
-        {#if !large.current && !(isSearching && searchTerm)}
+        {#if !(isSearching && searchTerm)}
           <button
             class="items-center sm flex secondary"
             onclick={() => {

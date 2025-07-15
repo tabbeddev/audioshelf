@@ -1,9 +1,6 @@
 {
   "version": "4",
   "specifiers": {
-    "jsr:@std/datetime@*": "0.225.5",
-    "jsr:@std/datetime@~0.225.5": "0.225.5",
-    "jsr:@std/fs@*": "1.0.19",
     "jsr:@std/internal@^1.0.9": "1.0.9",
     "jsr:@std/media-types@*": "1.1.0",
     "jsr:@std/media-types@^1.1.0": "1.1.0",
@@ -30,16 +27,6 @@
     "npm:vite@^6.2.6": "6.3.5_picomatch@4.0.2_@types+node@24.0.11"
   },
   "jsr": {
-    "@std/datetime@0.225.5": {
-      "integrity": "9f650f6caec546b80172e95a4edb8478d5fe060c4c937f7ede242ffceab6efc9"
-    },
-    "@std/fs@1.0.19": {
-      "integrity": "051968c2b1eae4d2ea9f79a08a3845740ef6af10356aff43d3e2ef11ed09fb06",
-      "dependencies": [
-        "jsr:@std/internal",
-        "jsr:@std/path@^1.1.1"
-      ]
-    },
     "@std/internal@1.0.9": {
       "integrity": "bdfb97f83e4db7a13e8faab26fb1958d1b80cc64366501af78a0aee151696eb8"
     },
@@ -1350,7 +1337,6 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@std/datetime@~0.225.5",
       "jsr:@std/media-types@^1.1.0",
       "jsr:@std/path@^1.1.1"
     ],
