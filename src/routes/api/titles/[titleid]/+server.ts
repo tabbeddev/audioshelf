@@ -1,9 +1,9 @@
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "../../../../../.svelte-kit/types/src/routes/api/titles/[titleid]/$types.d.ts";
 import { db } from "../../../../lib/prisma.ts";
-import { existsSync } from "jsr:@std/fs/exists";
 import { extname } from "jsr:@std/path";
 import { contentType } from "@std/media-types";
+import { openSync, statSync, readSync, close, existsSync } from "node:fs";
 
 export const GET: RequestHandler = async ({ request, params }) => {
   try {
@@ -19,7 +19,7 @@ export const GET: RequestHandler = async ({ request, params }) => {
   if (!existsSync(result.path)) return error(404, { message: "Title found, but not file" });
 
   try {
-    const fileStat = Deno.statSync(result.path);
+    const fileStat = statSync(result.path);
     const fileSize = fileStat.size;
 
     // check for range requests
@@ -43,18 +43,16 @@ export const GET: RequestHandler = async ({ request, params }) => {
     start = Math.max(0, start);
     end = Math.min(end, fileSize - 1);
 
-    const file = Deno.openSync(result.path, { read: true });
+    const file = openSync(result.path, "r");
 
     const stream = new ReadableStream({
       pull(controller) {
-        file.seekSync(start, Deno.SeekMode.Start);
-
         const buffer = new Uint8Array(51920);
-        const bytesRead = file.readSync(buffer);
+        const bytesRead = readSync(file, buffer, { position: start });
 
         if (bytesRead === null || start > end) {
           controller.close();
-          file.close();
+          close(file);
           return;
         }
 
@@ -64,11 +62,11 @@ export const GET: RequestHandler = async ({ request, params }) => {
 
         if (start > end) {
           controller.close();
-          file.close();
+          close(file);
         }
       },
       cancel() {
-        file.close();
+        close(file);
       },
     });
 
