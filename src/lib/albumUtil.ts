@@ -1,7 +1,16 @@
 import pkg from "@prisma/client";
 
-export const getArtistsOfAlbum = (album: Data.Album) => [...new Set(album.titles.map((v) => v.artist))].join(", ");
+export const getArtistsOfAlbum = (titles: pkg.Titles[]) => [...new Set(titles.map((v) => v.artist))].join(", ");
 export const getGenresOfAlbum = (album: Data.Album) => [...new Set(album.titles.map((v) => v.genre))].join(", ");
+
+export const convertMetadataListToAlbum = (metadata: Data.MetadataList) =>
+  Object.entries(metadata).map(([id, v]) => convertMetadataToAlbum(v, Number(id)));
+
+export function convertMetadataToAlbum(metadata: Data.Metadata, id: number) {
+  return { id, titles: convertDiscsToTitles(metadata.discs), name: metadata.name };
+}
+
+export const convertDiscsToTitles = (discs: Data.Metadata["discs"]): pkg.Titles[] => Object.values(discs).flat();
 
 export const getAlbumLength = (album: Data.Album) => album.titles.reduce((p, c) => p + c.length, 0);
 

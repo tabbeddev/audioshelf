@@ -1,9 +1,11 @@
 import { error } from "@sveltejs/kit";
-import type { RequestHandler } from "../../../../../.svelte-kit/types/src/routes/api/libraries/update/$types.d.ts";
-import { scrapeLibraries } from "../../../../lib/manageData.ts";
+import type { RequestHandler } from "./$types";
+import { scrapeLibraries } from "$lib/manageData.ts";
 
 export const POST: RequestHandler = async ({ request }) => {
+	console.log("Reading... args")
   const { rebuild = false }: { rebuild: boolean } = (await request.json()) ?? {};
+	console.log("Read args")
 
   try {
     await scrapeLibraries(rebuild);

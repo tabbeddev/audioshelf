@@ -4,11 +4,16 @@
   import { BookAudio, BookOpen, Play } from "@lucide/svelte";
 
   const {
-    album,
     items,
     onclick,
     hoverPlay = false,
-  }: { album: Data.Album; items: Snippet<[Data.Album]>; onclick: () => void; hoverPlay?: boolean } = $props();
+    disabled = false,
+  }: {
+    items: Snippet;
+    onclick: () => void;
+    hoverPlay?: boolean;
+    disabled?: boolean;
+  } = $props();
 
   let hovering = $state(false);
 </script>
@@ -20,9 +25,10 @@
   onmouseleave={() => {
     hovering = false;
   }}
+  {disabled}
 >
-  <Cover Icon={hovering ? (hoverPlay ? Play : BookOpen) : BookAudio} />
-  {@render items(album)}
+  <Cover Icon={hovering && !disabled ? (hoverPlay ? Play : BookOpen) : BookAudio} />
+  {@render items()}
 </button>
 
 <style>

@@ -5,14 +5,21 @@
   import { BookAudio, Wrench } from "@lucide/svelte";
   import { goto } from "$app/navigation";
   import { MediaQuery } from "svelte/reactivity";
+  import { onMount } from "svelte";
 
   const { data }: { data: PageData } = $props();
+  let isMedium = $state(false);
 
-  const medium = new MediaQuery("width >= 48rem");
+  onMount(() => {
+    const medium = new MediaQuery("width >= 48rem", true);
+    $effect(() => {
+      isMedium = medium.current;
+    });
+  });
 </script>
 
 <div class="-translate-1/2 top-1/5 left-1/2 absolute flex items-center gap-1 text-5xl font-light opacity-15 md:text-8xl">
-  <BookAudio size={medium.current ? 128 : 72} strokeWidth="1.25" />
+  <BookAudio size={isMedium ? 128 : 72} strokeWidth="1.25" />
   AudioShelf
 </div>
 
@@ -29,7 +36,7 @@
       >
         {@html createAvatar(shapes, {
           seed: user.username,
-          size: medium.current ? 128 : 64,
+          size: isMedium ? 128 : 64,
           radius: 8,
         }).toString()}
 

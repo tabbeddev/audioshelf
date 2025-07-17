@@ -1,0 +1,34 @@
+services:
+  audioshelf:
+    container_name: audioshelf_frontend
+    image: tabbeddev/audioshelf
+    restart: unless-stopped
+    ports:
+      # Host : Container
+      - ${PORT_NUMBER}:3000
+
+    environment:
+      DATABASE_URL: "mysql://root:${DB_PASSWORD}@audioshelf_db:3306/audioshelf"
+      ORIGIN: "${ORIGIN_URL}"
+      HOST: "${HOST_NAME}"
+
+    depends_on:
+      - audioshelf_db
+
+    volumes:
+      - ${AUDIOBOOKS_PATH}:/audiobooks
+
+  audioshelf_db:
+    container_name: audioshelf_mysql
+    image: mysql
+    restart: unless-stopped
+
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: audioshelf
+
+    volumes:
+      - mysqldata:/var/lib/mysql
+
+volumes:
+  mysqldata:

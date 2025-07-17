@@ -1,13 +1,13 @@
 <script lang="ts">
   import "../app.css";
   import type { Snippet } from "svelte";
-  import type { PageData } from "./$types";
-  import { page } from "$app/state";
+  import type { LayoutData } from "./$types";
+  import { page, navigating } from "$app/state";
   import { redirect } from "@sveltejs/kit";
-  import { CircleX, Info, TriangleAlert, X } from "@lucide/svelte";
+  import { CircleX, Info, Loader, TriangleAlert, X } from "@lucide/svelte";
   import { fade, slide } from "svelte/transition";
 
-  const { data, children }: { data: PageData; children: Snippet<[]> } = $props();
+  const { data, children }: { data: LayoutData; children: Snippet<[]> } = $props();
   let notification: App.Notification[] = $state([]);
 
   if (page.route.id?.startsWith("/setup")) {
@@ -27,6 +27,20 @@
 
     if (data.subtitle && data.title && data.type) notification.push(data);
   }
+
+  let loading = $state(false);
+  let loadingTimeout: NodeJS.Timeout;
+
+  $effect(() => {
+    if (navigating.to) {
+      loadingTimeout = setTimeout(() => {
+        loading = true;
+      }, 500);
+    } else {
+      loading = false;
+      clearTimeout(loadingTimeout);
+    }
+  });
 </script>
 
 <svelte:window {onmessage} />
@@ -61,3 +75,12 @@
     </div>
   {/each}
 </div>
+
+{#if loading}
+  <div class="fixed left-0 top-0 w-screen h-screen flex items-center justify-center" style="background-color: rgba(23, 33, 39, 75%);">
+    <div class="flex items-center gap-2 text-2xl">
+      <Loader size="40" class="animate-spin" />
+      Loading ...
+    </div>
+  </div>
+{/if}

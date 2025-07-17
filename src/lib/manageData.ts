@@ -1,17 +1,17 @@
-import { readMediaTags, transformTags } from "./id3.ts";
-import { db } from "./prisma.ts";
-import { extname } from "jsr:@std/path";
-import { contentType } from "jsr:@std/media-types";
-import type { TagType } from "jsmediatags/types";
+import { lookup } from "mime-types";
+import { transformTags } from "./id3.ts";
+import { db } from "./server/prisma.ts";
+import { readdirSync, realpathSync, lstatSync } from "node:fs";
+import { parseFile, type IAudioMetadata } from "music-metadata";
 
 async function addTitle(filePath: string) {
   console.log("Scraping -> " + filePath);
 
   let rawMetadata;
   try {
-    rawMetadata = await readMediaTags(filePath);
+    rawMetadata = await parseFile(filePath);
   } catch {
-    rawMetadata = { tags: {} } as TagType;
+    rawMetadata = { common: {} } as IAudioMetadata;
   }
   const metadata = await transformTags(filePath, rawMetadata);
 
@@ -25,27 +25,31 @@ async function addTitle(filePath: string) {
 }
 
 export async function scrapeLibraries(rebuild: boolean = false) {
+  console.log("Started Scraping Libraries...");
+
   // Walk through the library
   async function readLayer(path: string, layer: number = 0) {
-    const content = Deno.readDirSync(path);
+    const content = readdirSync(path);
     if (layer >= 2) {
       // Expect titles
-      for (const file of content.filter((v) => !v.isDirectory)) {
-        const fullPath = Deno.realPathSync(path) + "/" + file.name;
+      for (const file of content) {
+        const fullPath = realpathSync(path) + "/" + file;
+        if (lstatSync(fullPath).isDirectory()) continue;
 
         if (existingFiles.includes(fullPath)) continue;
 
-        const extension = extname(fullPath);
-
-        if (contentType(extension)?.startsWith("audio")) {
+        if ((lookup(file) || undefined)?.startsWith("audio")) {
           await addTitle(fullPath);
         } else {
-          console.log(`Skipping ${file.name} -> File is not an audio file`);
+          console.log(`Skipping ${file} -> File is not an audio file`);
         }
       }
     } else {
-      for (const item of content.filter((v) => v.isDirectory)) {
-        await readLayer(Deno.realPathSync(path) + "/" + item.name, layer + 1);
+      for (const item of content) {
+        const fullPath = realpathSync(path) + "/" + item;
+        if (!lstatSync(fullPath).isDirectory()) continue;
+
+        await readLayer(fullPath, layer + 1);
       }
     }
   }

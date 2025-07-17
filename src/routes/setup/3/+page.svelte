@@ -3,7 +3,7 @@
   import { goto } from "$app/navigation";
   import { onMount } from "svelte";
 
-  let scrapeRequest: Promise<Response> | undefined = $state();
+  let scrapeRequest = $state<Promise<Response>>();
 
   onMount(() => {
     scrapeRequest = fetch("/api/libraries/update", { method: "POST", body: JSON.stringify({ rebuild: true }) });

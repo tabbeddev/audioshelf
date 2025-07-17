@@ -1,5 +1,6 @@
-import type { RequestHandler } from "../../../../.svelte-kit/types/src/routes/api/users/$types.d.ts";
-import { db, Prisma } from "../../../lib/prisma.ts";
+import type { RequestHandler } from "./$types";
+import { db } from "$lib/server/prisma.ts";
+import { Prisma } from "$lib/prisma.ts";
 import { error } from "@sveltejs/kit";
 
 export const POST: RequestHandler = async ({ request }) => {

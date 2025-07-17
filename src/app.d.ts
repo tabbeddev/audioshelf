@@ -19,15 +19,7 @@ declare global {
   }
 
   namespace Data {
-    interface Tags {
-      title: string;
-      artist: string;
-      album: string;
-      track?: string;
-      genre: string;
-      length: number;
-      disk: string;
-    }
+    type Tags = Omit<pkg.Titles, "id" | "path">;
 
     type Album = pkg.Album & { titles: pkg.Titles[] };
 
@@ -37,6 +29,13 @@ declare global {
       })[];
       titles: (pkg.Titles & { album_entry: { id: number } })[];
     }
+
+    interface Metadata {
+      name: string;
+      discs: Record<string, pkg.Titles[]>;
+    }
+
+    type MetadataList = Record<number, Data.Metadata>;
   }
 }
 

@@ -1,9 +1,11 @@
 import { error } from "@sveltejs/kit";
-import type { LayoutServerLoad } from "../../../../.svelte-kit/types/src/routes/user/[uid]/$types.d.ts";
-import { db } from "../../../lib/prisma.ts";
+import type { LayoutServerLoad } from "./$types";
+import { db } from "$lib/server/prisma.ts";
 
 export const load = (async ({ params }) => {
   const { uid } = params;
+  if (!Number(uid)) return error(400, { message: "No uid" });
+
   try {
     Number(uid);
   } catch {

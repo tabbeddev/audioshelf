@@ -1,11 +1,11 @@
 import { error } from "@sveltejs/kit";
 import JSZip from "jszip";
-import type { RequestHandler } from "../../../../../../.svelte-kit/types/src/routes/api/albums/[albumid]/download/$types.d.ts";
-import { db } from "../../../../../lib/prisma.ts";
-import { sprintf } from "jsr:@std/fmt/printf";
-import { extname } from "jsr:@std/path";
+import type { RequestHandler } from "./$types";
+import { db } from "$lib/server/prisma.ts";
+import { sprintf } from "sprintf-js";
+import { extname } from "node:path";
 import { readFileSync } from "node:fs";
-import { getArtistsOfAlbum } from "../../../../../lib/albumUtil.ts";
+import { getArtistsOfAlbum } from "$lib/albumUtil.ts";
 
 export const GET: RequestHandler = async ({ params }) => {
   try {
@@ -15,22 +15,19 @@ export const GET: RequestHandler = async ({ params }) => {
   }
 
   const albumid = Number(params.albumid);
-  const album = await db.album.findUnique({ where: { id: albumid }, include: { titles: true, _count: true } });
+  const album = await db.album.findUnique({ where: { id: albumid }, include: { titles: true } });
+
   if (!album) return error(404, { message: "No album found" });
 
-  const lengthTracks = Math.max(album._count.titles, 10).toString().length;
-  const lengthDiscs = Math.max(...album.titles.map((v) => Number(v.track) || 0), 10).toString().length;
+  const lengthTracks = Math.max(...album.titles.map((v) => v.track || 0), 10).toString().length;
+  const lengthDiscs = Math.max(...album.titles.map((v) => v.disk || 0), 10).toString().length;
 
   const zip = new JSZip();
-  const zipFolder = zip.folder(getArtistsOfAlbum(album))!.folder(album.name)!;
+  const zipFolder = zip.folder(getArtistsOfAlbum(album.titles))!.folder(album.name)!;
 
   for (const track of album.titles) {
     const extension = extname(track.path);
-    const name = sprintf(
-      `%.${lengthDiscs}d%.${lengthTracks}d - ${track.title}${extension}`,
-      Number(track.disk) || 0,
-      Number(track.track) || 0
-    );
+    const name = sprintf(`%0${lengthDiscs}d%0${lengthTracks}d - ${track.title}${extension}`, track.disk || 0, track.track || 0);
 
     const fileContent = readFileSync(track.path);
 

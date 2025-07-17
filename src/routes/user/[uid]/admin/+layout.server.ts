@@ -1,5 +1,5 @@
 import { error } from "@sveltejs/kit";
-import type { LayoutServerLoad } from "../../../../../.svelte-kit/types/src/routes/user/[uid]/admin/$types.d.ts";
+import type { LayoutServerLoad } from "./$types";
 
 export const load = (async ({ parent }) => {
   const parentData = await parent();

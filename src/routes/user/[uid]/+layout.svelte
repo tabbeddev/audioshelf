@@ -15,17 +15,20 @@
     Repeat,
     Repeat1,
     ArrowRightToLine,
+    WifiOff,
   } from "@lucide/svelte";
   import { onDestroy, onMount, type Snippet } from "svelte";
   import type { LayoutData } from "./$types";
   import { createAvatar } from "@dicebear/core";
   import { shapes } from "@dicebear/collection";
   import { goto } from "$app/navigation";
-  import pkg from "@prisma/client";
   import { secondStringify } from "$lib/util";
   import Cover from "$lib/components/covers/cover.svelte";
-  import { getArtistsOfAlbum, getGenresOfAlbum } from "$lib/albumUtil";
+  import { calcElapsedTime, convertMetadataToAlbum, getAlbumLength, getArtistsOfAlbum, getGenresOfAlbum } from "$lib/albumUtil";
   import { MediaQuery } from "svelte/reactivity";
+  import { startedDB } from "$lib/stores/startedDB";
+  import { get } from "svelte/store";
+  import { albumDB } from "$lib/stores/albumDB";
 
   function onMessage(event: MessageEvent) {
     if (!player) return;
@@ -61,6 +64,11 @@
       navigator.mediaSession.metadata!.album = currentTitle.album;
       navigator.mediaSession.metadata!.artist = currentTitle.artist;
       navigator.mediaSession.metadata!.title = currentTitle.title;
+      navigator.mediaSession.metadata!.artwork = [
+        { src: "/512x512.png", sizes: "512x512" },
+        { src: "/favicon.png", sizes: "256x256" },
+        { src: "/96x96.png", sizes: "96x96" },
+      ];
     }
   }
 
@@ -68,10 +76,27 @@
     if (!player) return console.warn("Player not ready");
     currentAlbum = albumid;
 
-    const response = await fetch("/api/albums/" + albumid);
-    if (!response.ok) return;
+    if (data.serverAvailable) {
+      const response = await fetch("/api/albums/" + albumid);
+      if (!response.ok)
+        return postMessage({
+          type: "error",
+          title: "Can't play this album",
+          subtitle: response.status === 503 ? "Album not found" : (await response.json()).message,
+        } as App.Notification);
 
-    albumMetadata = await response.json();
+      albumMetadata = await response.json();
+    } else {
+      const metadata = get(albumDB)[currentAlbum];
+      if (!metadata)
+        return postMessage({
+          type: "error",
+          title: "Can't play this album",
+          subtitle: "You're offline and this album isn't downloaded",
+        } as App.Notification);
+
+      albumMetadata = metadata;
+    }
 
     if (!titleid) titleid = queue[0];
 
@@ -80,30 +105,51 @@
   }
 
   async function saveCurrentState() {
-    if (!(player && currentIndex !== undefined && queue.length !== 0 && currentAlbum !== undefined))
+    if (!(player && currentIndex !== undefined && queue.length !== 0 && currentAlbum !== undefined && album))
       return console.warn("Player not ready");
 
-    const response = await fetch(`/api/users/${data.user.id}/playstate`, {
-      method: "POST",
-      body: JSON.stringify({
-        albumid: currentAlbum,
-        titleid: queue[currentIndex!],
-        position: Math.round(player!.currentTime),
-      }),
-    });
-
-    if (!response.ok) {
-      postMessage({
-        type: "warning",
-        title: "Failed to save play state",
-        subtitle: "You won't be able to resume your audiobook: " + (await response.text()),
-      } as App.Notification);
-      console.warn({
-        albumid: currentAlbum,
-        titleid: queue[currentIndex!],
-        position: Math.round(player!.currentTime),
+    if (data.serverAvailable) {
+      const response = await fetch(`/api/users/${data.user.id}/playstate`, {
+        method: "POST",
+        body: JSON.stringify({
+          albumid: currentAlbum,
+          titleid: queue[currentIndex!],
+          position: Math.round(player!.currentTime),
+        }),
       });
+
+      if (!response.ok) {
+        postMessage({
+          type: "warning",
+          title: "Failed to save play state",
+          subtitle: "You won't be able to resume your audiobook: " + (await response.json()).message,
+        } as App.Notification);
+        console.warn({
+          albumid: currentAlbum,
+          titleid: queue[currentIndex!],
+          position: Math.round(player!.currentTime),
+        });
+      }
     }
+
+    startedDB.update((value) => {
+      if (!(data.user.id in value)) value[data.user.id] = {};
+
+      for (const album of Object.keys(value[data.user.id])) {
+        value[data.user.id][Number(album)].lastplayed = false;
+      }
+
+      value[data.user.id][currentAlbum!] = {
+        lastplayed: true,
+        position: Math.round(player!.currentTime),
+        titleid: queue[currentIndex!],
+        artist: getArtistsOfAlbum(album.titles),
+        length: getAlbumLength(album),
+        name: album.name,
+        totalProgress: calcElapsedTime(queue[currentIndex!], album) + Math.round(player!.currentTime),
+      };
+      return value;
+    });
   }
 
   function seek(e: Event) {
@@ -130,16 +176,16 @@
 
   let isHovering = $state(false);
 
-  let player: HTMLAudioElement | undefined = $state();
+  let player = $state<HTMLAudioElement>();
 
   // List of title ids;
-  let albumMetadata: { name: string; discs: Record<string, pkg.Titles[]> } | undefined = $state();
+  let albumMetadata = $state<Data.Metadata>();
   let queue: number[] = $derived(
     Object.values(albumMetadata?.discs ?? {})
       .flat()
       .map((v) => v.id),
   );
-  let currentIndex: number | undefined = $state();
+  let currentIndex = $state<number>();
   let currentTitle = $derived(
     Object.values(albumMetadata?.discs ?? {})
       .flat()
@@ -147,11 +193,13 @@
   );
 
   // Album id
-  let currentAlbum: number | undefined = $state();
+  let currentAlbum = $state<number>();
+
+  let album = $derived(albumMetadata && currentAlbum !== undefined ? convertMetadataToAlbum(albumMetadata, currentAlbum) : undefined);
 
   // UI stuff
-  let duration: number | undefined = $state();
-  let currentTime: number | undefined = $state();
+  let duration = $state<number>();
+  let currentTime = $state<number>();
 
   let currentState = $state(State.Buffering);
 
@@ -171,7 +219,7 @@
 
   const large = new MediaQuery("width >= 64rem");
 
-  onMount(() => {
+  onMount(async () => {
     player = new Audio();
     player.addEventListener("durationchange", () => {
       duration = player!.duration;
@@ -180,9 +228,9 @@
     player.addEventListener("timeupdate", () => {
       currentTime = player!.currentTime;
 
-      if (mediaSessionAvailable)
+      if (mediaSessionAvailable && duration)
         navigator.mediaSession.setPositionState({
-          duration,
+          duration: duration,
           position: currentTime,
         });
     });
@@ -279,16 +327,72 @@
 
         player.currentTime = details.seekTime;
       });
+
+      navigator.mediaSession.setActionHandler("seekbackward", (details) => {
+        if (!player || !details.seekTime) return;
+        const skipTime = details.seekOffset || 10;
+
+        player.currentTime = Math.max(player.currentTime - skipTime, 0);
+      });
+
+      navigator.mediaSession.setActionHandler("seekforward", (details) => {
+        if (!player || !details.seekTime) return;
+        const skipTime = details.seekOffset || 10;
+
+        player.currentTime = Math.min(player.currentTime + skipTime, player.duration);
+      });
     }
 
     // Resume last audiobook
 
-    const lastState = data.states.find((v) => v.lastplayed);
-    doNotPlay = true;
-    if (lastState) playAlbum(lastState);
+    const hasLocalData = Object.entries(get(startedDB)).filter((v) => Object.keys(v[1]).length > 0).length > 0;
 
-    onDestroy(saveCurrentState);
+    if (!hasLocalData && data.serverAvailable) {
+      console.log("Only server has a state");
+
+      const lastState = data.states.find((v) => v.lastplayed);
+      doNotPlay = true;
+      if (lastState) playAlbum(lastState);
+    } else if (hasLocalData) {
+      console.log("At least client has a state");
+
+      const db = get(startedDB)[data.user.id];
+      const states = Object.entries(db);
+      const lastState = states.find((v) => v[1].lastplayed);
+      doNotPlay = true;
+      if (lastState) {
+        playAlbum({ albumid: Number(lastState[0]), position: lastState[1].position, titleid: lastState[1].titleid });
+
+        // Sync to server if available
+        if (data.serverAvailable) {
+          console.log("Syncing...");
+          const response = await fetch(`/api/users/${data.user.id}/playstate`, {
+            method: "POST",
+            body: JSON.stringify({
+              albumid: Number(lastState[0]),
+              titleid: lastState[1].titleid,
+              position: lastState[1].position,
+            }),
+          });
+
+          if (!response.ok) {
+            postMessage({
+              type: "warning",
+              title: "Failed to sync play state",
+              subtitle: "You won't be able to resume your audiobook on other devices: " + (await response.json()).message,
+            } as App.Notification);
+            console.warn({
+              albumid: currentAlbum,
+              titleid: queue[currentIndex!],
+              position: Math.round(player!.currentTime),
+            });
+          }
+        }
+      }
+    }
   });
+
+  onMount(() => onDestroy(saveCurrentState));
 
   $effect(() => {
     if (!navigator.mediaSession.metadata) return;
@@ -404,72 +508,82 @@
       isSearching = false;
     }}
   >
-    <div class="secondbg">
-      <h1 class="text-2xl iconbtn">
-        <Search />
-        <p>Search results for: <span class="font-semibold">{searchTerm}</span></p>
-      </h1>
-    </div>
-    {#await fetch("/api/search?q=" + searchTerm)}
+    {#if data.serverAvailable}
       <div class="secondbg">
-        <p>Searching...</p>
+        <h1 class="text-2xl iconbtn">
+          <Search />
+          <p>Search results for: <span class="font-semibold">{searchTerm}</span></p>
+        </h1>
       </div>
-    {:then response}
-      {#await response.json()}
+      {#await fetch("/api/search?q=" + searchTerm)}
         <div class="secondbg">
-          <p>Loading...</p>
+          <p>Searching...</p>
         </div>
-      {:then json: Data.SearchResult}
-        <div class="secondbg">
-          <h1 class="text-2xl font-semibold">Albums:</h1>
-          <hr />
-          {#if json.albums.length === 0}
-            <p class="text-xl">No search results found.</p>
-          {:else}
-            {#each json.albums.slice(0, 10).toSorted((a, b) => a.name.localeCompare(b.name)) as album}
-              <button
-                class="secondary flex gap-2 items-center w-full text-left"
-                onclick={() => {
-                  goto(`/user/${data.user.id}/album/${album.id}`);
-                  searchTerm = "";
-                }}
-              >
-                <Cover Icon={BookAudio} size={24} strokeWidth={1.5} />
-                <div class="flex sm:gap-2 max-sm:flex-col">
-                  <span class="font-semibold">{album.name}</span>
-                  {/* @ts-ignore */ null}
-                  <span>({getGenresOfAlbum(album)}) by {getArtistsOfAlbum(album)} ({album._count.titles} titles)</span>
-                </div>
-              </button>
-            {/each}
-          {/if}
-        </div>
+      {:then response}
+        {#await response.json()}
+          <div class="secondbg">
+            <p>Loading...</p>
+          </div>
+        {:then json: Data.SearchResult}
+          <div class="secondbg">
+            <h1 class="text-2xl font-semibold">Albums:</h1>
+            <hr />
+            {#if json.albums.length === 0}
+              <p class="text-xl">No search results found.</p>
+            {:else}
+              {#each json.albums.slice(0, 10).toSorted((a, b) => a.name.localeCompare(b.name)) as album}
+                <button
+                  class="secondary flex gap-2 items-center w-full text-left"
+                  onclick={() => {
+                    goto(`/user/${data.user.id}/album/${album.id}`);
+                    searchTerm = "";
+                  }}
+                >
+                  <Cover Icon={BookAudio} size={24} strokeWidth={1.5} />
+                  <div class="flex sm:gap-2 max-sm:flex-col">
+                    <span class="font-semibold">{album.name}</span>
+                    {/* @ts-ignore */ null}
+                    <span>({getGenresOfAlbum(album)}) by {getArtistsOfAlbum(album)} ({album._count.titles} titles)</span>
+                  </div>
+                </button>
+              {/each}
+            {/if}
+          </div>
 
-        <div class="secondbg">
-          <h1 class="text-2xl font-semibold">Titles:</h1>
-          <hr />
-          {#if json.titles.length === 0}
-            <p class="text-xl">No search results found.</p>
-          {:else}
-            {#each json.titles.slice(0, 15).toSorted((a, b) => a.title.localeCompare(b.title)) as title}
-              <button
-                class="secondary flex gap-2 items-center w-full text-left"
-                onclick={() => {
-                  postMessage({ type: "playAlbum", albumid: title.album_entry.id, starttitleid: title.id } as App.PlayRequest);
-                  searchTerm = "";
-                }}
-              >
-                <Cover Icon={Music} size={16} strokeWidth={1.75} />
-                <div class="flex sm:gap-2 max-sm:flex-col">
-                  <span class="font-semibold">{title.title}</span>
-                  <span>({title.album}) by {title.artist} [{secondStringify(title.length)}]</span>
-                </div>
-              </button>
-            {/each}
-          {/if}
-        </div>
+          <div class="secondbg">
+            <h1 class="text-2xl font-semibold">Titles:</h1>
+            <hr />
+            {#if json.titles.length === 0}
+              <p class="text-xl">No search results found.</p>
+            {:else}
+              {#each json.titles.slice(0, 15).toSorted((a, b) => a.title.localeCompare(b.title)) as title}
+                <button
+                  class="secondary flex gap-2 items-center w-full text-left"
+                  onclick={() => {
+                    postMessage({ type: "playAlbum", albumid: title.album_entry.id, starttitleid: title.id } as App.PlayRequest);
+                    searchTerm = "";
+                  }}
+                >
+                  <Cover Icon={Music} size={16} strokeWidth={1.75} />
+                  <div class="flex sm:gap-2 max-sm:flex-col">
+                    <span class="font-semibold">{title.title}</span>
+                    <span>({title.album}) by {title.artist} [{secondStringify(title.length)}]</span>
+                  </div>
+                </button>
+              {/each}
+            {/if}
+          </div>
+        {/await}
       {/await}
-    {/await}
+    {:else}
+      <div class="secondbg">
+        <h1 class="text-2xl iconbtn">
+          <WifiOff />
+          Oops. You're ofline!
+        </h1>
+        <p class="text-lg">Connect to the server to search.</p>
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -480,7 +594,11 @@
 <!-- Navbar -->
 <div class="scnbg h-14 w-full fixed left-0 top-0 flex justify-between gap-2 items-center">
   <p class="hidden items-center gap-1 text-2xl ml-4 lg:flex">
-    <BookAudio size="36" strokeWidth="1.25" />
+    {#if data.serverAvailable}
+      <BookAudio size="36" strokeWidth="1.25" />
+    {:else}
+      <WifiOff size="36" strokeWidth="1.25" />
+    {/if}
     AudioShelf
   </p>
 
@@ -552,6 +670,7 @@
         }}
         title="Open Admin Settings"
         class="sm iconbtn secondary p-1.5!"
+        disabled={!data.serverAvailable}
       >
         <Wrench size="36" strokeWidth="1.5" />
       </button>

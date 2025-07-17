@@ -65,7 +65,8 @@
             title: "Libraries updated",
             subtitle: rebuild ? "All files were updated" : "New files were added to the database",
           } as App.Notification);
-        else postMessage({ type: "error", title: "Failed to update all libraries", subtitle: await d.text() } as App.Notification);
+        else
+          postMessage({ type: "error", title: "Failed to update all libraries", subtitle: (await d.json()).message } as App.Notification);
       })
       .catch(() => {
         postMessage({ type: "error", title: "Failed to update all libraries", subtitle: "Internal error" } as App.Notification);

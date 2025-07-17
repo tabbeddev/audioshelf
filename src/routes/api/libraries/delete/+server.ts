@@ -1,6 +1,7 @@
 import { error } from "@sveltejs/kit";
-import type { RequestHandler } from "../../../../../.svelte-kit/types/src/routes/api/libraries/create/$types.d.ts";
-import { db, Prisma } from "../../../../lib/prisma.ts";
+import type { RequestHandler } from "./$types";
+import { db } from "$lib/server/prisma.ts";
+import { Prisma } from "$lib/prisma.ts";
 
 export const POST: RequestHandler = async ({ request }) => {
   const { name }: { name: string } = await request.json();

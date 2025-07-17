@@ -43,10 +43,10 @@ model Titles {
   album       String
   album_entry Album   @relation(fields: [album], references: [name])
   artist      String
-  track       String?
+  track       Int?
   genre       String
   length      Int
-  disk        String
+  disk        Int
 }
 
 model Album {

@@ -46,7 +46,7 @@ button:active:not(:disabled) {
 }
 
 button:disabled {
-  filter: grayscale(75%) brightness(115%);
+  filter: brightness(80%);
 
   transition: all 200ms;
 }
