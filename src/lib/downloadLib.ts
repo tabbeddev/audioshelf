@@ -3,6 +3,7 @@ import { convertDiscsToTitles } from "./albumUtil.ts";
 import { albumDB } from "./stores/albumDB.ts";
 
 export async function downloadAlbum(id: number) {
+  if (!("caches" in window)) return console.warn("Cache not available");
   if (id in get(albumDB)) return console.warn(id + " already downloaded");
 
   const metaResponse = await fetch("/api/albums/" + id);
@@ -26,6 +27,7 @@ export async function downloadAlbum(id: number) {
 }
 
 export function softDelete(id: number) {
+  if (!("caches" in window)) return console.warn("Cache not available");
   console.log("Soft-deleting: " + id);
 
   albumDB.update((v) => {

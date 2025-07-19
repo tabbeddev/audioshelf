@@ -3,7 +3,7 @@
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
-  const { libraries } = data;
+  const libraries = $state(data.libraries);
 
   let name = $state("");
   let path = $state("");

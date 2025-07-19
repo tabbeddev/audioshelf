@@ -50,7 +50,7 @@
 
 {@render children()}
 
-<div class="right-0 bottom-0 fixed p-2 flex flex-col-reverse gap-1">
+<div class="right-0 bottom-0 fixed p-2 flex flex-col-reverse gap-1 z-30">
   {#each notification as not, index}
     <div transition:slide>
       <div class="not-bg" out:fade>

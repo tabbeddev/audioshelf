@@ -4,6 +4,10 @@
   border-color: rgb(165, 173, 186);
 }
 
+.tinyborder {
+  border-color: rgb(81, 89, 100);
+}
+
 a {
   text-decoration: underline;
 

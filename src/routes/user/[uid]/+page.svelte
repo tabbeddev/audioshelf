@@ -8,6 +8,7 @@
   import { startedDB } from "$lib/stores/startedDB";
   import { albumDB } from "$lib/stores/albumDB";
   import { get } from "svelte/store";
+  import { onMount } from "svelte";
 
   function unifyData(): [
     string,
@@ -50,7 +51,12 @@
     return entries;
   }
 
+  onMount(() => {
+    hasCache = "caches" in window;
+  });
+
   let { data }: { data: PageData & LayoutData } = $props();
+  let hasCache = $state(true);
 </script>
 
 <h1 class="text-3xl font-medium iconbtn mb-2">
@@ -113,7 +119,11 @@
   <WifiOff class="shrink-0" />
   Downloaded Books
 </h1>
-<CoverRow
-  albums={convertMetadataListToAlbum($albumDB)}
-  notfound={{ title: "No audiobooks downloaded.", subtitle: "Connect to the server and download some." }}
-/>
+{#if hasCache}
+  <CoverRow
+    albums={convertMetadataListToAlbum($albumDB)}
+    notfound={{ title: "No audiobooks downloaded.", subtitle: "Connect to the server and download some." }}
+  />
+{:else}
+  <p class="lg:text-center font-bold text-2xl">Downloads are not available</p>
+{/if}

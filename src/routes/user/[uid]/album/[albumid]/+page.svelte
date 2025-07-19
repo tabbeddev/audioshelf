@@ -2,12 +2,13 @@
   import { getAlbumLength, getArtistsOfAlbum, getGenresOfAlbum, listDiscs } from "$lib/albumUtil";
   import Cover from "$lib/components/covers/cover.svelte";
   import { secondStringify } from "$lib/util";
-  import { BookAudio, Disc, Download, FolderDown, Loader, Play, Trash2 } from "@lucide/svelte";
+  import { BookAudio, Disc, Download, FolderDown, Loader, Play, Trash2, X } from "@lucide/svelte";
   import type { PageData } from "./$types";
   import { MediaQuery } from "svelte/reactivity";
   import { goto } from "$app/navigation";
   import { albumDB } from "$lib/stores/albumDB";
   import { downloadAlbum } from "$lib/downloadLib";
+  import { onMount } from "svelte";
 
   const { data }: { data: PageData } = $props();
 
@@ -22,7 +23,12 @@
       });
   }
 
+  onMount(() => {
+    hasCache = "caches" in window;
+  });
+
   let downloadPromise = $state<Promise<void>>();
+  let hasCache = $state(true);
 </script>
 
 {#if data.album}
@@ -50,7 +56,12 @@
           Play
         </button>
 
-        {#if downloadPromise}
+        {#if !hasCache}
+          <button class="iconbtn mt-2 secondary" disabled>
+            <X />
+            Downloads are not available
+          </button>
+        {:else if downloadPromise}
           <button class="iconbtn mt-2" disabled>
             <Loader class="animate-spin" />
             Downloading...
@@ -82,13 +93,13 @@
   </div>
 
   {#each discs as [disc, titles]}
-    <p class="iconbtn border-b-2 pb-1 my-2 mx-2">
+    <p class="iconbtn border-b-2 pb-1 my-2 mx-1">
       <Disc size="32" />
       <span class="text-2xl">Disc {disc}</span>
       <span class="font-light">({titles.length} titles)</span>
     </p>
     {#each titles as title}
-      <p class="iconbtn mx-3 my-1">
+      <div class="flex gap-2 items-center mx-2 my-1 pb-1 border-b-2 tinyborder">
         <button
           class="iconbtn sm secondary"
           onclick={() => {
@@ -96,16 +107,23 @@
           }}
           disabled={unavailable}
         >
-          {#if new MediaQuery("width >= 40rem").current}
+          {#if new MediaQuery("width >= 40rem").current || !title.track}
             <Play strokeWidth="1.75" />
           {:else}
             <span class="border-2 rounded-[100%] h-8 w-8 flex items-center justify-center shrink-0">{title.track}</span>
           {/if}
         </button>
-        <span class="border-2 rounded-[100%] h-8 w-8 items-center justify-center shrink-0 hidden sm:flex">{title.track}</span>
-        <span class="w-16 max-sm:hidden">{secondStringify(title.length)}</span>
-        <span class="text-lg">{title.title}</span>
-      </p>
+
+        {#if title.track}
+          <span class="border-2 rounded-[100%] h-8 w-8 items-center justify-center shrink-0 hidden sm:flex">{title.track}</span>
+        {/if}
+
+        <div>
+          <p class="font-medium">{title.title}</p>
+
+          <p class="text-sm text-gray-300">{secondStringify(title.length)} • {title.artist}</p>
+        </div>
+      </div>
     {/each}
   {/each}
 {/if}

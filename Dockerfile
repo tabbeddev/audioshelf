@@ -17,4 +17,4 @@ COPY --from=builder /app/prisma prisma/
 COPY package.json .
 EXPOSE 3000
 ENV NODE_ENV=production
-CMD npx prisma db push && node build
+CMD npx prisma db push && node server.js

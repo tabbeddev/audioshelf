@@ -2,19 +2,22 @@
   import { shapes } from "@dicebear/collection";
   import { createAvatar } from "@dicebear/core";
   import type { PageData } from "./$types";
-  import { BookAudio, Wrench } from "@lucide/svelte";
+  import { BookAudio, CircleAlert, Wrench } from "@lucide/svelte";
   import { goto } from "$app/navigation";
   import { MediaQuery } from "svelte/reactivity";
   import { onMount } from "svelte";
 
   const { data }: { data: PageData } = $props();
   let isMedium = $state(false);
+  let missingAllowInsecure = $state(false);
 
   onMount(() => {
     const medium = new MediaQuery("width >= 48rem", true);
     $effect(() => {
       isMedium = medium.current;
     });
+
+    missingAllowInsecure = !("caches" in window);
   });
 </script>
 
@@ -29,7 +32,7 @@
   <div class="flex max-md:flex-col gap-2 items-center justify-center">
     {#each data.users as user}
       <button
-        class="w-fit flex md:flex-col items-center gap-2 secondary"
+        class="max-md:w-fit flex md:flex-col items-center gap-2 secondary"
         onclick={() => {
           goto("/user/" + user.id);
         }}
@@ -49,4 +52,17 @@
       </button>
     {/each}
   </div>
+
+  {#if missingAllowInsecure}
+    <div class="flex justify-center">
+      <p class="iconbtn mt-4 text-2xl font-semibold">
+        <CircleAlert size="32" />
+        You're not set up for offline use
+      </p>
+    </div>
+
+    <p>You won't be able to access this app, while being offline.</p>
+    <p>This includes playing your downloaded audiobooks.</p>
+    <p>See the FAQ for more info.</p>
+  {/if}
 </div>

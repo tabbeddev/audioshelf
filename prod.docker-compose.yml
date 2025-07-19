@@ -9,7 +9,7 @@ services:
 
     environment:
       DATABASE_URL: "mysql://root:${DB_PASSWORD}@audioshelf_db:3306/audioshelf"
-      ORIGIN: "${ORIGIN_URL}"
+      ORIGIN: "${ORIGIN}"
       HOST: "${HOST_NAME}"
 
     depends_on:

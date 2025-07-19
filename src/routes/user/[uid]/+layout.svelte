@@ -86,7 +86,7 @@
         } as App.Notification);
 
       albumMetadata = await response.json();
-    } else {
+    } else if ("caches" in window) {
       const metadata = get(albumDB)[currentAlbum];
       if (!metadata)
         return postMessage({
@@ -96,6 +96,11 @@
         } as App.Notification);
 
       albumMetadata = metadata;
+    } else {
+      return postMessage({
+        title: "Can't play this album",
+        subtitle: "You're offline and downloads are not available",
+      } as App.Notification);
     }
 
     if (!titleid) titleid = queue[0];
@@ -543,7 +548,7 @@
                   <div class="flex sm:gap-2 max-sm:flex-col">
                     <span class="font-semibold">{album.name}</span>
                     {/* @ts-ignore */ null}
-                    <span>({getGenresOfAlbum(album)}) by {getArtistsOfAlbum(album)} ({album._count.titles} titles)</span>
+                    <span>({getGenresOfAlbum(album)}) by {getArtistsOfAlbum(album.titles)} ({album._count.titles} titles)</span>
                   </div>
                 </button>
               {/each}
