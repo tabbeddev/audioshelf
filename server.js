@@ -4,8 +4,6 @@ import { readFileSync } from "node:fs";
 import http from "node:http";
 import https from "node:https";
 
-const originURL = new URL(process.env.ORIGIN);
-
 let hasSSL = false;
 let key;
 let cert;
@@ -18,19 +16,19 @@ if (process.env.HTTPS_PORT_NUMBER && process.env.HTTPS_CERT_PATH && process.env.
 
 const app = express();
 
-const port = Number(process.env.PORT_NUMBER);
+const host = process.env.HOST_NAME;
 
 if (hasSSL) {
   const httpsServer = https.createServer({ key, cert }, app);
 
-  httpsServer.listen(port, function () {
-    console.log("HTTPS Server is running on: https://%s:%s", originURL.hostname, port);
+  httpsServer.listen(3000, host, function () {
+    console.log("HTTPS Server is running on: https://%s:3000", host);
   });
 } else {
   const httpServer = http.createServer(app);
 
-  httpServer.listen(port, function () {
-    console.log("HTTP Server is running on: http://%s:%s", originURL.hostname, port);
+  httpServer.listen(3000, host, function () {
+    console.log("HTTP Server is running on: http://%s:3000", host);
   });
 }
 
@@ -38,10 +36,6 @@ app.use((req, res, next) => {
   const d = new Date();
   console.log(`(${d.toLocaleString()}) ${req.socket.remoteAddress} [${req.method}] ${req.url}`);
   next();
-});
-
-app.get("/where-https", (req, res) => {
-  res.send(sslport);
 });
 
 app.use(handler);

@@ -14,7 +14,8 @@ WORKDIR /app
 COPY --from=builder /app/build build/
 COPY --from=builder /app/node_modules node_modules/
 COPY --from=builder /app/prisma prisma/
+COPY --from=builder /app/server.js server.js
 COPY package.json .
 EXPOSE 3000
 ENV NODE_ENV=production
-CMD npx prisma db push && node server.js
+CMD npx prisma db push --skip-generate && node server.js
