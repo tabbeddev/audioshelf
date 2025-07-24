@@ -7,7 +7,7 @@ import https from "node:https";
 let hasSSL = false;
 let key;
 let cert;
-if (process.env.HTTPS_PORT_NUMBER && process.env.HTTPS_CERT_PATH && process.env.HTTPS_KEY_PATH) {
+if (process.env.HTTPS_CERT_PATH && process.env.HTTPS_KEY_PATH) {
   hasSSL = true;
 
   key = readFileSync(process.env.HTTPS_KEY_PATH);
