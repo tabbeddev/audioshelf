@@ -1,5 +1,5 @@
 import { get } from "svelte/store";
-import { convertDiscsToTitles } from "./albumUtil.ts";
+import { convertDiscsToTitles, convertMetadataListToAlbum } from "./albumUtil.ts";
 import { albumDB } from "./stores/albumDB.ts";
 
 export async function downloadAlbum(id: number) {
@@ -34,4 +34,39 @@ export function softDelete(id: number) {
     delete v[id];
     return v;
   });
+}
+
+export async function searchFor(query: string, useServer: boolean): Promise<Data.SearchResult> {
+  if (useServer) {
+    const response = await fetch("/api/search?q=" + query);
+    if (!response.ok) {
+      postMessage({ type: "error", title: "Search request failed", subtitle: (await response.json()).message } as App.Notification);
+      return { albums: [], titles: [] };
+    }
+
+    return await response.json();
+  } else {
+    query = query.toLowerCase();
+    const metadata = get(albumDB);
+    const albums = convertMetadataListToAlbum(metadata);
+    const titles = albums
+      .map((v) =>
+        v.titles.map((t) => {
+          return { ...t, album_entry: { id: v.id } };
+        })
+      )
+      .flat();
+
+    const resultAlbums = albums
+      .filter((v) => v.name.toLowerCase().includes(query))
+      .toSorted((a, b) => a.name.localeCompare(b.name))
+      .slice(0, 10);
+
+    const resultTitles = titles
+      .filter((v) => v.title.toLowerCase().includes(query) || v.artist.toLocaleLowerCase().includes(query))
+      .toSorted((a, b) => a.title.localeCompare(b.title))
+      .slice(0, 15);
+
+    return { albums: resultAlbums, titles: resultTitles };
+  }
 }

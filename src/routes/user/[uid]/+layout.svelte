@@ -16,6 +16,7 @@
     Repeat1,
     ArrowRightToLine,
     WifiOff,
+    X,
   } from "@lucide/svelte";
   import { onDestroy, onMount, type Snippet } from "svelte";
   import type { LayoutData } from "./$types";
@@ -29,6 +30,8 @@
   import { startedDB } from "$lib/stores/startedDB";
   import { get } from "svelte/store";
   import { albumDB } from "$lib/stores/albumDB";
+  import FadeInOut from "$lib/components/covers/fadeInOut.svelte";
+  import { searchFor } from "$lib/downloadLib";
 
   function onMessage(event: MessageEvent) {
     if (!player) return;
@@ -175,6 +178,7 @@
     Playing,
     Paused,
     Buffering,
+    Errored,
   }
 
   const { children, data }: { data: LayoutData; children: Snippet } = $props();
@@ -261,13 +265,20 @@
               if (!d.ok)
                 postMessage({
                   type: "warning",
-                  title: "Failed to delete savestate",
+                  title: "Failed to delete SaveState",
                   subtitle: (await d.json()).message,
                 } as App.Notification);
             })
             .catch(() => {
-              postMessage({ type: "warning", title: "Failed to delete savestate", subtitle: "Request error" } as App.Notification);
+              postMessage({ type: "warning", title: "Failed to delete SaveState", subtitle: "Request error" } as App.Notification);
             });
+
+          startedDB.update((v) => {
+            if (!currentAlbum) return v;
+
+            delete v[currentAlbum];
+            return v;
+          });
         }
       }
     });
@@ -293,6 +304,15 @@
         currentState = State.Playing;
         player!.play();
       }
+    });
+
+    player.addEventListener("error", () => {
+      currentState = State.Errored;
+      postMessage({
+        type: "error",
+        title: "Failed to load track",
+        subtitle: "Sorry, but the current track coudn't be loaded. Please try again later",
+      } as App.Notification);
     });
 
     // Media Session API
@@ -409,7 +429,7 @@
       case State.Paused:
         navigator.mediaSession.playbackState = "paused";
 
-      case State.Buffering:
+      default:
         navigator.mediaSession.playbackState = "none";
     }
   });
@@ -419,7 +439,11 @@
 
 {#if isPoppedUp && !(isSearching && searchTerm) && player && queue.length > 0 && currentAlbum && albumMetadata && currentIndex !== undefined && currentTitle}
   <!-- Fullscreen Player -->
-  <div class="fixed mt-14 w-screen top-0 left-0 p-2 semiplaybg flex flex-col justify-center z-20" style:height="calc(100vh - 3.5rem)">
+  <div
+    class="fixed mt-14 w-screen top-0 left-0 p-2 semiplaybg flex flex-col justify-center z-20"
+    style:height="calc(100vh - 3.5rem)"
+    style:view-transition-name="fullscreen-player"
+  >
     <div class="flex max-md:flex-col items-center md:justify-center gap-4">
       <Cover Icon={BookAudio} />
       <div class="max-md:text-center flex flex-col max-md:items-center w-full md:w-3/5">
@@ -466,14 +490,16 @@
             onclick={() => {
               player!.paused ? ((doNotPlay = false), player!.play()) : player!.pause();
             }}
-            disabled={currentState === State.Buffering}
+            disabled={currentState === State.Buffering || currentState === State.Errored}
           >
             {#if currentState === State.Paused}
               <Play size="48" strokeWidth="1.75" fill="currentColor" />
             {:else if currentState === State.Playing}
               <Pause size="48" strokeWidth="1.75" fill="currentColor" />
-            {:else}
+            {:else if currentState === State.Buffering}
               <Loader size="48" strokeWidth="1.75" class="animate-spin" />
+            {:else if currentState === State.Errored}
+              <X size="48" strokeWidth="1.75" />
             {/if}
           </button>
 
@@ -507,88 +533,76 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div
     class="fixed mt-14 w-screen top-0 left-0 px-6 pt-6 flex flex-col gap-6 overflow-scroll z-20"
+    style:view-transition-name="search-overlay"
     style:background-color="rgba(0,0,0,75%)"
     style:height="calc(100vh - {isPoppedUp && !(isSearching && searchTerm) ? 3.5 : 7.5}rem)"
     onclick={() => {
       isSearching = false;
     }}
   >
-    {#if data.serverAvailable}
+    <div class="secondbg">
+      <h1 class="text-2xl iconbtn">
+        <Search />
+        <p>Search results for: <span class="font-semibold">{searchTerm}</span></p>
+      </h1>
+      {#if !data.serverAvailable}
+        <p class="text-lg">You're offline: Only searching through your downloads</p>
+      {/if}
+    </div>
+    {#await searchFor(searchTerm, data.serverAvailable)}
       <div class="secondbg">
-        <h1 class="text-2xl iconbtn">
-          <Search />
-          <p>Search results for: <span class="font-semibold">{searchTerm}</span></p>
-        </h1>
+        <p>Searching...</p>
       </div>
-      {#await fetch("/api/search?q=" + searchTerm)}
-        <div class="secondbg">
-          <p>Searching...</p>
-        </div>
-      {:then response}
-        {#await response.json()}
-          <div class="secondbg">
-            <p>Loading...</p>
-          </div>
-        {:then json: Data.SearchResult}
-          <div class="secondbg">
-            <h1 class="text-2xl font-semibold">Albums:</h1>
-            <hr />
-            {#if json.albums.length === 0}
-              <p class="text-xl">No search results found.</p>
-            {:else}
-              {#each json.albums.slice(0, 10).toSorted((a, b) => a.name.localeCompare(b.name)) as album}
-                <button
-                  class="secondary flex gap-2 items-center w-full text-left"
-                  onclick={() => {
-                    goto(`/user/${data.user.id}/album/${album.id}`);
-                    searchTerm = "";
-                  }}
-                >
-                  <Cover Icon={BookAudio} size={24} strokeWidth={1.5} />
-                  <div class="flex sm:gap-2 max-sm:flex-col">
-                    <span class="font-semibold">{album.name}</span>
-                    {/* @ts-ignore */ null}
-                    <span>({getGenresOfAlbum(album)}) by {getArtistsOfAlbum(album.titles)} ({album._count.titles} titles)</span>
-                  </div>
-                </button>
-              {/each}
-            {/if}
-          </div>
+    {:then json: Data.SearchResult}
+      <div class="secondbg">
+        <h1 class="text-2xl font-semibold">Albums:</h1>
+        <hr />
+        {#if json.albums.length === 0}
+          <p class="text-xl">No search results found.</p>
+        {:else}
+          {#each json.albums as album}
+            <button
+              class="secondary flex gap-2 items-center w-full text-left"
+              onclick={() => {
+                goto(`/user/${data.user.id}/album/${album.id}`);
+                searchTerm = "";
+              }}
+            >
+              <Cover Icon={BookAudio} size={24} strokeWidth={1.5} />
+              <div class="flex sm:gap-2 max-sm:flex-col">
+                <span class="font-semibold">{album.name}</span>
+                {/* @ts-ignore */ null}
+                <span>({getGenresOfAlbum(album)}) by {getArtistsOfAlbum(album.titles)} ({album._count.titles} titles)</span>
+              </div>
+            </button>
+          {/each}
+        {/if}
+      </div>
 
-          <div class="secondbg">
-            <h1 class="text-2xl font-semibold">Titles:</h1>
-            <hr />
-            {#if json.titles.length === 0}
-              <p class="text-xl">No search results found.</p>
-            {:else}
-              {#each json.titles.slice(0, 15).toSorted((a, b) => a.title.localeCompare(b.title)) as title}
-                <button
-                  class="secondary flex gap-2 items-center w-full text-left"
-                  onclick={() => {
-                    postMessage({ type: "playAlbum", albumid: title.album_entry.id, starttitleid: title.id } as App.PlayRequest);
-                    searchTerm = "";
-                  }}
-                >
-                  <Cover Icon={Music} size={16} strokeWidth={1.75} />
-                  <div class="flex sm:gap-2 max-sm:flex-col">
-                    <span class="font-semibold">{title.title}</span>
-                    <span>({title.album}) by {title.artist} [{secondStringify(title.length)}]</span>
-                  </div>
-                </button>
-              {/each}
-            {/if}
-          </div>
-        {/await}
-      {/await}
-    {:else}
       <div class="secondbg">
-        <h1 class="text-2xl iconbtn">
-          <WifiOff />
-          Oops. You're ofline!
-        </h1>
-        <p class="text-lg">Connect to the server to search.</p>
+        <h1 class="text-2xl font-semibold">Titles:</h1>
+        <hr />
+        {#if json.titles.length === 0}
+          <p class="text-xl">No search results found.</p>
+        {:else}
+          {#each json.titles as title}
+            <button
+              class="secondary flex gap-2 items-center w-full text-left"
+              onclick={() => {
+                postMessage({ type: "playAlbum", albumid: title.album_entry.id, starttitleid: title.id } as App.PlayRequest);
+                searchTerm = "";
+              }}
+            >
+              <Cover Icon={Music} size={16} strokeWidth={1.75} />
+              <div class="flex sm:gap-2 max-sm:flex-col">
+                <span class="font-semibold">{title.title}</span>
+                <span>({title.album}) by {title.artist} [{secondStringify(title.length)}]</span>
+              </div>
+            </button>
+          {/each}
+        {/if}
       </div>
-    {/if}
+    {/await}
   </div>
 {/if}
 
@@ -597,7 +611,7 @@
 </main>
 
 <!-- Navbar -->
-<div class="scnbg h-14 w-full fixed left-0 top-0 flex justify-between gap-2 items-center">
+<div class="scnbg h-14 w-full fixed left-0 top-0 flex justify-between gap-2 items-center" style:view-transition-name="navbar">
   <p class="hidden items-center gap-1 text-2xl ml-4 lg:flex">
     {#if data.serverAvailable}
       <BookAudio size="36" strokeWidth="1.25" />
@@ -685,16 +699,28 @@
 
 {#if !isPoppedUp || (isSearching && searchTerm)}
   <!-- Play bar -->
-  <div class="playbg h-16 w-full fixed left-0 bottom-0 flex items-center justify-between px-2 overflow-hidden">
+  <div
+    class="playbg h-16 w-full fixed left-0 bottom-0 flex items-center justify-between px-2 overflow-hidden"
+    style:view-transition-name="playbar"
+  >
     {#if !player}
       <p class="text-xl font-semibold">Loading...</p>
     {:else if queue.length > 0 && currentAlbum && albumMetadata && currentIndex !== undefined && currentTitle}
       <div>
         <p class="font-medium md:font-bold text-xl iconbtn">
           <Music size="20" class="shrink-0" />
-          {currentTitle.title}
+          {#snippet content()}
+            <span>{currentTitle.title}</span>
+          {/snippet}
+
+          <FadeInOut value={currentTitle.title} {content} />
         </p>
-        <a class="font-medium text-lg max-md:hidden" href={`/user/${data.user.id}/album/${currentAlbum}`}>{currentTitle.album}</a>
+
+        {#snippet albumContent()}
+          <a class="font-medium text-lg max-md:hidden" href={`/user/${data.user.id}/album/${currentAlbum}`}>{currentTitle.album}</a>
+        {/snippet}
+
+        <FadeInOut value={currentAlbum} content={albumContent} />
       </div>
 
       <div class="flex gap-1 items-center lg:fixed lg:left-1/2 lg:-translate-x-1/2">
@@ -724,14 +750,16 @@
           onclick={() => {
             player!.paused ? ((doNotPlay = false), player!.play()) : player!.pause();
           }}
-          disabled={currentState === State.Buffering}
+          disabled={currentState === State.Buffering || currentState === State.Errored}
         >
           {#if currentState === State.Paused}
             <Play size="32" strokeWidth="1.75" fill="currentColor" />
           {:else if currentState === State.Playing}
             <Pause size="32" strokeWidth="1.75" fill="currentColor" />
-          {:else}
+          {:else if currentState === State.Buffering}
             <Loader size="32" strokeWidth="1.75" class="animate-spin" />
+          {:else if currentState === State.Errored}
+            <X size="32" strokeWidth="1.75" />
           {/if}
         </button>
 
@@ -759,11 +787,15 @@
       </div>
 
       {#if large.current}
-        <div class="flex gap-2 items-center justify-end">
-          <span class="text-xl">{currentTime === undefined ? "--:--" : secondStringify(currentTime)}</span>
-          <input type="range" class="w-[20vw]" max={Math.round(duration ?? 0)} value={currentTime ?? 0} onchange={seek} />
-          <span class="text-xl">{duration === undefined ? "--:--" : secondStringify(duration)}</span>
-        </div>
+        {#snippet timeContent()}
+          <div class="flex gap-2 items-center justify-end">
+            <span class="text-xl">{currentTime === undefined ? "--:--" : secondStringify(currentTime)}</span>
+            <input type="range" class="w-[20vw]" max={Math.round(duration ?? 0)} value={currentTime ?? 0} onchange={seek} />
+            <span class="text-xl">{duration === undefined ? "--:--" : secondStringify(duration)}</span>
+          </div>
+        {/snippet}
+
+        <FadeInOut content={timeContent} value={duration} />
       {/if}
     {:else}
       <div>

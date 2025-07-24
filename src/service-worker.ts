@@ -38,7 +38,7 @@ self.addEventListener("fetch", (event: FetchEvent) => {
   // Only handle when same origin
   if (
     url.origin !== self.location.origin ||
-    request.headers.has("Range") ||
+    (request.headers.has("Range") && !request.headers.get("Ramge")!.endsWith("-")) ||
     request.method !== "GET" ||
     url.pathname.startsWith("/health") ||
     url.pathname.startsWith("/setup")

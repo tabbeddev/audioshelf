@@ -18,9 +18,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Extract version and set it to TAG env var
+        run: |
+          echo "TAG=$(jq -r '.version' package.json)" >> $GITHUB_ENV
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: tabbeddev/audioshelf:latest
+          tags: |
+            tabbeddev/audioshelf:latest
+            tabbeddev/audioshelf:${{ env.TAG }}

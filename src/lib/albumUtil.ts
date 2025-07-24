@@ -7,7 +7,8 @@ export const convertMetadataListToAlbum = (metadata: Data.MetadataList) =>
   Object.entries(metadata).map(([id, v]) => convertMetadataToAlbum(v, Number(id)));
 
 export function convertMetadataToAlbum(metadata: Data.Metadata, id: number) {
-  return { id, titles: convertDiscsToTitles(metadata.discs), name: metadata.name };
+  const titles = convertDiscsToTitles(metadata.discs);
+  return { id, titles, name: metadata.name, _count: { titles: titles.length } };
 }
 
 export const convertDiscsToTitles = (discs: Data.Metadata["discs"]): pkg.Titles[] => Object.values(discs).flat();

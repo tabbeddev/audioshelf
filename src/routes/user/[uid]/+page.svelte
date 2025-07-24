@@ -3,7 +3,7 @@
   import Book from "$lib/components/covers/book.svelte";
   import CoverRow from "$lib/components/covers/coverRow.svelte";
   import { secondStringify } from "$lib/util";
-  import { BookAudio, BookOpen, WifiOff } from "@lucide/svelte";
+  import { BookAudio, BookOpen, Info, WifiOff, X } from "@lucide/svelte";
   import type { LayoutData, PageData } from "./$types";
   import { startedDB } from "$lib/stores/startedDB";
   import { albumDB } from "$lib/stores/albumDB";
@@ -51,12 +51,28 @@
     return entries;
   }
 
+  function forgetAlbum(albumid: number, index: number) {
+    fetch(`/api/users/${data.user.id}/playstate`, { method: "DELETE", body: JSON.stringify({ albumid }) })
+      .then(async (d) => {
+        if (d.ok) {
+          unifiedData.splice(index, 1);
+        } else {
+          postMessage({ type: "error", title: "Failed to delete Savestate", subtitle: (await d.json()).message } as App.Notification);
+        }
+      })
+      .catch((e) => {
+        postMessage({ type: "error", title: "Failed to delete Savestate", subtitle: e } as App.Notification);
+      });
+  }
+
   onMount(() => {
     hasCache = "caches" in window;
   });
 
   let { data }: { data: PageData & LayoutData } = $props();
   let hasCache = $state(true);
+
+  const unifiedData = $state(unifyData());
 </script>
 
 <h1 class="text-3xl font-medium iconbtn mb-2">
@@ -65,11 +81,16 @@
 </h1>
 
 {#if data.states.length === 0}
-  <p class="lg:text-center font-bold text-2xl">There's nothing to continue from.</p>
-  <p class="lg:text-center text-xl">Start an audiobook and you'll see it here.</p>
+  <div class="flex items-center gap-3">
+    <Info size="48" strokeWidth={1.5} />
+    <div>
+      <h1 class="text-2xl font-semibold">You haven't started an audiobook</h1>
+      <p>Start an audiobook and you'll see it here.</p>
+    </div>
+  </div>
 {:else}
   <div class="overflow-x-scroll w-full flex p-2 mb-2 gap-2">
-    {#each unifyData() as [id, state]}
+    {#each unifiedData as [id, state], index}
       {#snippet items()}
         <span class="w-64 font-semibold iconbtn justify-center">
           {#if !(data.serverAvailable || id in $albumDB)}
@@ -87,8 +108,16 @@
         </div>
       {/snippet}
 
+      {#snippet outeritems()}
+        <button class="iconbtn secondary" onclick={() => forgetAlbum(Number(id), index)}>
+          <X />
+          Forget this audiobook
+        </button>
+      {/snippet}
+
       <Book
         {items}
+        {outeritems}
         onclick={() => {
           postMessage({
             type: "playAlbum",
@@ -125,5 +154,24 @@
     notfound={{ title: "No audiobooks downloaded.", subtitle: "Connect to the server and download some." }}
   />
 {:else}
-  <p class="lg:text-center font-bold text-2xl">Downloads are not available</p>
+  <div class="flex items-center gap-3">
+    <Info size="48" strokeWidth={1.5} />
+    <div>
+      <h1 class="text-2xl font-semibold">Downloads are not available</h1>
+      <p>See the FAQ for more info.</p>
+    </div>
+  </div>
+{/if}
+
+{#if !data.serverAvailable}
+  <hr />
+
+  <div class="flex items-center gap-3">
+    <Info size="48" strokeWidth={1.5} />
+    <div>
+      <h1 class="text-lg font-medium">Looking for all audiobooks?</h1>
+      <p>It seems like you're not connected to your server.</p>
+      <p>Connect to your server again, to see all your audiobooks</p>
+    </div>
+  </div>
 {/if}

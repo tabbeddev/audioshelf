@@ -6,6 +6,7 @@
   import { redirect } from "@sveltejs/kit";
   import { CircleX, Info, Loader, TriangleAlert, X } from "@lucide/svelte";
   import { fade, slide } from "svelte/transition";
+  import { onNavigate } from "$app/navigation";
 
   const { data, children }: { data: LayoutData; children: Snippet<[]> } = $props();
   let notification: App.Notification[] = $state([]);
@@ -35,11 +36,24 @@
     if (navigating.to) {
       loadingTimeout = setTimeout(() => {
         loading = true;
-      }, 500);
+      }, 250);
     } else {
       loading = false;
       clearTimeout(loadingTimeout);
     }
+  });
+
+  // Transitions
+
+  onNavigate(() => {
+    if (!document.startViewTransition) return console.warn("StartViewTransition not found");
+
+    return new Promise((resolve) => {
+      document.startViewTransition(async () => {
+        resolve();
+        await navigating.complete;
+      });
+    });
   });
 </script>
 
@@ -50,7 +64,7 @@
 
 {@render children()}
 
-<div class="right-0 bottom-0 fixed p-2 flex flex-col-reverse gap-1 z-30">
+<div class="right-0 bottom-0 fixed p-2 flex flex-col-reverse gap-1 z-30" style:view-transition-name="noti-box">
   {#each notification as not, index}
     <div transition:slide>
       <div class="not-bg" out:fade>
@@ -77,7 +91,11 @@
 </div>
 
 {#if loading}
-  <div class="fixed left-0 top-0 w-screen h-screen flex items-center justify-center" style="background-color: rgba(23, 33, 39, 75%);">
+  <div
+    class="fixed left-0 top-0 w-screen h-screen flex items-center justify-center"
+    style:background-color="rgba(23, 33, 39, 75%)"
+    style:view-transition-name="loading-overlay"
+  >
     <div class="flex items-center gap-2 text-2xl">
       <Loader size="40" class="animate-spin" />
       Loading ...

@@ -9,10 +9,14 @@ export const GET: RequestHandler = async ({ url }) => {
   const albums = await db.album.findMany({
     where: { name: { contains: query } },
     include: { _count: true, titles: { select: { artist: true, length: true, genre: true } } },
+    take: 10,
+    orderBy: { name: "asc" },
   });
   const titles = await db.titles.findMany({
     where: { OR: [{ title: { contains: query } }, { artist: { contains: query } }] },
     include: { album_entry: { select: { id: true } } },
+    take: 15,
+    orderBy: { title: "asc" },
   });
 
   return json({ albums, titles }, { headers: { "Cache-Control": "public, max-age=120" } });

@@ -32,7 +32,7 @@
   <div class="flex max-md:flex-col gap-2 items-center justify-center">
     {#each data.users as user}
       <button
-        class="max-md:w-fit flex md:flex-col items-center gap-2 secondary"
+        class="max-md:w-[90vw] flex md:flex-col items-center gap-2 secondary"
         onclick={() => {
           goto("/user/" + user.id);
         }}
@@ -65,4 +65,13 @@
     <p>This includes playing your downloaded audiobooks.</p>
     <p>See the FAQ for more info.</p>
   {/if}
+</div>
+
+<div class="fixed bottom-2 left-1/2 -translate-x-1/2">
+  <span class="opacity-65 text-nowrap">
+    <a class="text-blue-200" href="https://github.com/tabbeddev/audioshelf">{PKG.name}</a>
+    v{PKG.version}
+    by
+    <a class="text-blue-200" href="https://github.com/tabbeddev">tabbeddev</a>
+  </span>
 </div>

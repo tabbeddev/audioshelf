@@ -5,14 +5,19 @@
   import { goto } from "$app/navigation";
   import { MediaQuery } from "svelte/reactivity";
   import Cover from "./cover.svelte";
-  import { BookAudio } from "@lucide/svelte";
+  import { BookAudio, Info } from "@lucide/svelte";
 
-  const { albums, notfound }: { albums: Data.Album[], notfound: {title: string, subtitle: string} } = $props();
+  const { albums, notfound }: { albums: Data.Album[]; notfound: { title: string; subtitle: string } } = $props();
 </script>
 
 {#if albums.length === 0}
-  <p class="lg:text-center font-bold text-2xl">{notfound.title}</p>
-  <p class="lg:text-center text-xl">{notfound.subtitle}</p>
+  <div class="flex items-center gap-3">
+    <Info size="48" strokeWidth={1.5} />
+    <div>
+      <h1 class="text-2xl font-semibold">{notfound.title}</h1>
+      <p>{notfound.subtitle}</p>
+    </div>
+  </div>
 {:else}
   <div class="overflow-x-scroll w-full flex p-2 mb-2 gap-2 max-md:flex-col">
     {#each albums as album}
