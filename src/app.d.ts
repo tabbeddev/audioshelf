@@ -37,18 +37,6 @@ declare global {
 
     type MetadataList = Record<number, Data.Metadata>;
   }
-
-  interface Package {
-    name: string;
-    private: boolean;
-    version: string;
-    type: string;
-    scripts: Record<string, string>;
-    dependencies: Record<string, string>;
-    devDependencies: Record<string, string>;
-  }
-
-  const PKG: package;
 }
 
 export {};

@@ -3,7 +3,7 @@
   import Book from "$lib/components/covers/book.svelte";
   import CoverRow from "$lib/components/covers/coverRow.svelte";
   import { secondStringify } from "$lib/util";
-  import { BookAudio, BookOpen, Info, WifiOff, X } from "@lucide/svelte";
+  import { FileQuestionMark, Info, Library, Square, SquareLibrary, WifiOff, X } from "@lucide/svelte";
   import type { LayoutData, PageData } from "./$types";
   import { startedDB } from "$lib/stores/startedDB";
   import { albumDB } from "$lib/stores/albumDB";
@@ -75,14 +75,22 @@
   const unifiedData = $state(unifyData());
 </script>
 
+<svelte:head>
+	<title>Home | AudioShelf</title>
+</svelte:head>
+
 <h1 class="text-3xl font-medium iconbtn mb-2">
-  <BookOpen class="shrink-0" />
+  {#if unifiedData.length === 0}
+    <Square />
+  {:else}
+    <SquareLibrary />
+  {/if}
   Started audiobooks
 </h1>
 
-{#if data.states.length === 0}
+{#if unifiedData.length === 0}
   <div class="flex items-center gap-3">
-    <Info size="48" strokeWidth={1.5} />
+    <SquareLibrary size="48" strokeWidth={1.5} />
     <div>
       <h1 class="text-2xl font-semibold">You haven't started an audiobook</h1>
       <p>Start an audiobook and you'll see it here.</p>
@@ -98,13 +106,19 @@
           {/if}
           {state.name}
         </span>
-        <span class="w-64 font-light">{state.artist}</span>
+        <span class="w-64 font-light">
+          <span class="sr-only">by </span>
+          {state.artist}
+        </span>
         <div class="scnbg w-64 h-6 rounded-sm">
           <div
             class="prmbg h-full flex items-center justify-center rounded-sm z-0"
             style:width={(state.totalProgress / state.length) * 100 + "%"}
           ></div>
-          <div class="-translate-y-[95%] z-10">{secondStringify(state.totalProgress)} / {secondStringify(state.length)}</div>
+          <div class="-translate-y-[95%] z-10">
+            <span class="sr-only">- Progress: </span>
+            {secondStringify(state.totalProgress)} / {secondStringify(state.length)}
+          </div>
         </div>
       {/snippet}
 
@@ -136,10 +150,13 @@
 <hr />
 {#if data.serverAvailable}
   <h1 class="text-3xl font-medium iconbtn mb-2">
-    <BookAudio class="shrink-0" />
+    <Library class="shrink-0" />
     Audiobooks
   </h1>
-  <CoverRow albums={data.allAlbums} notfound={{ title: "No audiobooks added.", subtitle: "Add a library to add some." }} />
+  <CoverRow
+    albums={data.allAlbums}
+    notfound={{ title: "No audiobooks added.", subtitle: "Add a library to add some.", icon: FileQuestionMark }}
+  />
 
   <hr />
 {/if}
@@ -151,7 +168,7 @@
 {#if hasCache}
   <CoverRow
     albums={convertMetadataListToAlbum($albumDB)}
-    notfound={{ title: "No audiobooks downloaded.", subtitle: "Connect to the server and download some." }}
+    notfound={{ title: "No audiobooks downloaded.", subtitle: "Connect to the server and download some.", icon: SquareLibrary }}
   />
 {:else}
   <div class="flex items-center gap-3">

@@ -7,6 +7,10 @@
   const { data }: { data: LayoutData } = $props();
 </script>
 
+<svelte:head>
+	<title>Error {page.status} | AudioShelf</title>
+</svelte:head>
+
 <div class="left-1/2 top-1/2 -translate-1/2 absolute flex flex-col items-center">
   <h1 class="font-light text-8xl p-2 pt-0 border-b-2">{page.status}</h1>
   <p class="text-2xl my-2">{page.error?.message}</p>

@@ -59,13 +59,17 @@
   let admins = $derived(users.filter((v) => v.isadmin));
 </script>
 
-<p class="text-3xl font-semibold">Users:</p>
+<svelte:head>
+  <title>Users | Admin Settings | AudioShelf</title>
+</svelte:head>
+
+<h1 class="text-3xl font-semibold">Users:</h1>
 
 <hr />
 
 {#each users as user, index}
   {@const preventDegradation = user.isadmin && admins.length === 1}
-  <div class="flex justify-between items-center">
+  <div class="flex max-md:flex-col justify-between md:items-center">
     <div class="iconbtn">
       <h1 class="text-lg font-medium">{user.username}</h1>
       {#if user.isadmin}
@@ -82,7 +86,7 @@
           deleteUser(index);
         }}
       >
-        <Trash2 />
+        <Trash2 size="20" />
         Delete user
       </button>
       <button
@@ -97,7 +101,7 @@
           <CircleArrowDown />
           Degrade to user
         {:else}
-          <Wrench />
+          <Wrench size="20" />
           Promote to admin
         {/if}
       </button>
@@ -106,7 +110,7 @@
   <hr />
 {/each}
 
-<p class="text-3xl font-semibold mb-2">Create User:</p>
+<h2 class="text-3xl font-semibold mb-2">Create User:</h2>
 
 <form onsubmit={createUser}>
   <label for="name">Name:</label>

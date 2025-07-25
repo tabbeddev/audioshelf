@@ -11,8 +11,9 @@ export const load = (async ({ params }) => {
   }
 
   const id = Number(albumid);
+  const album = await db.album.findUnique({ where: { id }, select: { id: true, name: true, titles: true } });
 
-  if (!(await db.album.findUnique({ where: { id } }))) return error(404, { message: "Unknown album" });
+  if (!album) return error(404, { message: "Unknown album" });
 
-  return { album: await db.album.findUnique({ where: { id }, select: { id: true, name: true, titles: true } }) };
+  return { album };
 }) satisfies PageServerLoad;

@@ -38,7 +38,6 @@ self.addEventListener("fetch", (event: FetchEvent) => {
   // Only handle when same origin
   if (
     url.origin !== self.location.origin ||
-    (request.headers.has("Range") && !request.headers.get("Ramge")!.endsWith("-")) ||
     request.method !== "GET" ||
     url.pathname.startsWith("/health") ||
     url.pathname.startsWith("/setup")
@@ -50,8 +49,8 @@ self.addEventListener("fetch", (event: FetchEvent) => {
     caches.open(/^\/api\/(?:albums|titles)\/\d+\/?$/m.exec(url.pathname) ? DATA_CACHE : APP_SHELL_CACHE).then(async (cache) => {
       try {
         const response = await fetch(request);
-        if (!response.ok) throw new Error();
-        cache.put(request, response.clone());
+        if (!response.ok && response.status !== 404) throw new Error();
+        if (response.status === 200) cache.put(request, response.clone());
         return response;
       } catch {
         const cached = await cache.match(request);

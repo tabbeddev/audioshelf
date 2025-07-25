@@ -74,7 +74,11 @@
   }
 </script>
 
-<p class="text-3xl font-semibold">Libraries:</p>
+<svelte:head>
+  <title>Libraries | Admin Settings | AudioShelf</title>
+</svelte:head>
+
+<h1 class="text-3xl font-semibold">Libraries:</h1>
 
 <div class="flex gap-1">
   <button
@@ -106,7 +110,7 @@
   <hr />
 {:else}
   {#each libraries as lib, index}
-    <div class="flex justify-between items-center">
+    <div class="flex max-md:flex-col justify-between md:items-center">
       <div>
         <h1 class="text-lg font-medium">{lib.name}</h1>
         <p class="italic">{lib.path}</p>
@@ -120,7 +124,7 @@
   {/each}
 {/if}
 
-<p class="text-3xl font-semibold mb-2">Create Library:</p>
+<h2 class="text-3xl font-semibold mb-2">Create Library:</h2>
 
 <form onsubmit={createLibrary}>
   <label for="name">Name:</label>

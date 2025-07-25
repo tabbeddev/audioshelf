@@ -6,6 +6,7 @@
   import { goto } from "$app/navigation";
   import { MediaQuery } from "svelte/reactivity";
   import { onMount } from "svelte";
+  import { version } from "$app/environment";
 
   const { data }: { data: PageData } = $props();
   let isMedium = $state(false);
@@ -20,6 +21,10 @@
     missingAllowInsecure = !("caches" in window);
   });
 </script>
+
+<svelte:head>
+	<title>AudioShelf</title>
+</svelte:head>
 
 <div class="-translate-1/2 top-1/5 left-1/2 absolute flex items-center gap-1 text-5xl font-light opacity-15 md:text-8xl">
   <BookAudio size={isMedium ? 128 : 72} strokeWidth="1.25" />
@@ -53,6 +58,8 @@
     {/each}
   </div>
 
+  <p class="text-center mt-4">An admin can add new users in the admin settings</p>
+
   {#if missingAllowInsecure}
     <div class="flex justify-center">
       <p class="iconbtn mt-4 text-2xl font-semibold">
@@ -67,11 +74,11 @@
   {/if}
 </div>
 
-<div class="fixed bottom-2 left-1/2 -translate-x-1/2">
+<footer class="fixed bottom-2 left-1/2 -translate-x-1/2">
   <span class="opacity-65 text-nowrap">
-    <a class="text-blue-200" href="https://github.com/tabbeddev/audioshelf">{PKG.name}</a>
-    v{PKG.version}
+    <a class="text-blue-200" href="https://github.com/tabbeddev/audioshelf" target="_blank">AudioShelf</a>
+    v{version}
     by
-    <a class="text-blue-200" href="https://github.com/tabbeddev">tabbeddev</a>
+    <a class="text-blue-200" href="https://github.com/tabbeddev" target="_blank">tabbeddev</a>
   </span>
-</div>
+</footer>

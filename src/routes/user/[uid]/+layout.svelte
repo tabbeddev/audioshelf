@@ -17,6 +17,7 @@
     ArrowRightToLine,
     WifiOff,
     X,
+    SearchX,
   } from "@lucide/svelte";
   import { onDestroy, onMount, type Snippet } from "svelte";
   import type { LayoutData } from "./$types";
@@ -417,7 +418,18 @@
     }
   });
 
-  onMount(() => onDestroy(saveCurrentState));
+  onMount(() =>
+    onDestroy(() => {
+      saveCurrentState();
+      if (player) {
+        player.pause();
+        player.remove();
+        player = undefined;
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.setPositionState();
+      }
+    }),
+  );
 
   $effect(() => {
     if (!navigator.mediaSession.metadata) return;
@@ -443,34 +455,52 @@
     class="fixed mt-14 w-screen top-0 left-0 p-2 semiplaybg flex flex-col justify-center z-20"
     style:height="calc(100vh - 3.5rem)"
     style:view-transition-name="fullscreen-player"
+    aria-label="Fullscreen Player"
   >
     <div class="flex max-md:flex-col items-center md:justify-center gap-4">
       <Cover Icon={BookAudio} />
       <div class="max-md:text-center flex flex-col max-md:items-center w-full md:w-3/5">
-        <p class="text-xl font-semibold">{currentTitle.title}</p>
-        <p class="text-xl">{currentTitle.artist}</p>
+        <p aria-label="Current title" class="text-xl font-semibold">{currentTitle.title}</p>
+        <p aria-label="Current artist" class="text-xl">{currentTitle.artist}</p>
         <a
+          aria-label="Current album"
           class="font-medium my-2 text-lg"
           href={`/user/${data.user.id}/album/${currentAlbum}`}
           onclick={() => {
             isPoppedUp = false;
           }}>{currentTitle.album}</a
         >
-        <input type="range" class="max-md:w-11/12 mt-2" max={Math.round(duration ?? 0)} value={currentTime ?? 0} onchange={seek} />
+        <input
+          type="range"
+          class="max-md:w-11/12 mt-2"
+          max={Math.round(duration ?? 0)}
+          value={currentTime ?? 0}
+          onchange={seek}
+          aria-label="Seeker bar"
+        />
 
         <div class="flex gap-2 justify-between max-md:w-11/12 text-lg">
-          <span>{currentTime === undefined ? "--:--" : secondStringify(currentTime)}</span>
-          <span>{duration === undefined ? "--:--" : secondStringify(duration)}</span>
+          <span>
+            <span class="sr-only">Position: </span>
+            {currentTime === undefined ? "--:--" : secondStringify(currentTime)}
+          </span>
+          <span>
+            <span class="sr-only">Duration: </span>
+            {duration === undefined ? "--:--" : secondStringify(duration)}
+          </span>
         </div>
 
         <div class="flex gap-1 items-center max-md:justify-center">
           <button class="iconbtn sm mr-2" onclick={toggleRepeat} class:secondary={repeating === 0}>
             {#if repeating === 0}
               <ArrowRightToLine strokeWidth="1.5" size="32" />
+              <span class="sr-only">Repeating: off</span>
             {:else if repeating === 1}
               <Repeat strokeWidth="1.5" size="32" />
+              <span class="sr-only">Repeating: album</span>
             {:else}
               <Repeat1 strokeWidth="1.5" size="32" />
+              <span class="sr-only">Repeating: track</span>
             {/if}
           </button>
 
@@ -483,6 +513,7 @@
             }}
           >
             <SkipBack strokeWidth="1.5" size="40" fill="currentColor" />
+            <span class="sr-only">Skip back</span>
           </button>
 
           <button
@@ -494,12 +525,16 @@
           >
             {#if currentState === State.Paused}
               <Play size="48" strokeWidth="1.75" fill="currentColor" />
+              <span class="sr-only">Play</span>
             {:else if currentState === State.Playing}
               <Pause size="48" strokeWidth="1.75" fill="currentColor" />
+              <span class="sr-only">Pause</span>
             {:else if currentState === State.Buffering}
               <Loader size="48" strokeWidth="1.75" class="animate-spin" />
+              <span class="sr-only">Loading...</span>
             {:else if currentState === State.Errored}
               <X size="48" strokeWidth="1.75" />
+              <span class="sr-only">Failed to load</span>
             {/if}
           </button>
 
@@ -512,6 +547,7 @@
             }}
           >
             <SkipForward strokeWidth="1.5" size="40" fill="currentColor" />
+            <span class="sr-only">Skip forward</span>
           </button>
 
           <button
@@ -521,6 +557,7 @@
             }}
           >
             <ChevronDown strokeWidth="1.5" size="32" />
+            <span class="sr-only">Close Fullscreen Player</span>
           </button>
         </div>
       </div>
@@ -539,14 +576,31 @@
     onclick={() => {
       isSearching = false;
     }}
+    aria-label="Search results"
   >
     <div class="secondbg">
-      <h1 class="text-2xl iconbtn">
-        <Search />
-        <p>Search results for: <span class="font-semibold">{searchTerm}</span></p>
+      <h1 class="text-2xl flex justify-between items-center">
+        <div class="iconbtn">
+          <Search />
+          <p>Search results for: <span class="font-semibold">{searchTerm}</span></p>
+        </div>
+
+        <button
+          class="iconbtn"
+          onclick={() => {
+            searchTerm = "";
+            isSearching = false;
+          }}
+        >
+          <SearchX />
+          Close Search
+        </button>
       </h1>
       {#if !data.serverAvailable}
-        <p class="text-lg">You're offline: Only searching through your downloads</p>
+        <p class="text-lg flex items-center gap-1">
+          <WifiOff size="20" />
+          You're offline: Only searching through your downloads
+        </p>
       {/if}
     </div>
     {#await searchFor(searchTerm, data.serverAvailable)}
@@ -555,8 +609,8 @@
       </div>
     {:then json: Data.SearchResult}
       <div class="secondbg">
-        <h1 class="text-2xl font-semibold">Albums:</h1>
-        <hr />
+        <h2 class="text-2xl font-semibold">Albums:</h2>
+        <hr aria-hidden="true" />
         {#if json.albums.length === 0}
           <p class="text-xl">No search results found.</p>
         {:else}
@@ -580,8 +634,8 @@
       </div>
 
       <div class="secondbg">
-        <h1 class="text-2xl font-semibold">Titles:</h1>
-        <hr />
+        <h2 class="text-2xl font-semibold">Titles:</h2>
+        <hr aria-hidden="true" />
         {#if json.titles.length === 0}
           <p class="text-xl">No search results found.</p>
         {:else}
@@ -606,12 +660,16 @@
   </div>
 {/if}
 
-<main class="mt-16 mb-18 mx-2">
+<main class="mt-16 mb-18 mx-2" aria-hidden={(isSearching && Boolean(searchTerm)) || isPoppedUp}>
   {@render children()}
 </main>
 
 <!-- Navbar -->
-<div class="scnbg h-14 w-full fixed left-0 top-0 flex justify-between gap-2 items-center" style:view-transition-name="navbar">
+<header
+  class="scnbg h-14 w-full fixed left-0 top-0 flex justify-between gap-2 items-center z-[19]"
+  style:view-transition-name="navbar"
+  role="navigation"
+>
   <p class="hidden items-center gap-1 text-2xl ml-4 lg:flex">
     {#if data.serverAvailable}
       <BookAudio size="36" strokeWidth="1.25" />
@@ -625,6 +683,7 @@
     <Search size="32" class="max-sm:hidden" />
     <input
       type="text"
+      aria-label="Search"
       placeholder="{large.current ? '[Shift + F] ' : ''}Search for your favorite books..."
       id="globalsearch"
       class="2xl:w-2xl! md:w-96!"
@@ -643,10 +702,17 @@
       class="iconbtn sm secondary p-1.5! lg:pl-2! text-xl!"
       title="Switch user"
       id="switch-btn"
+      aria-label="Switch user"
       onmouseleave={() => {
         isHovering = false;
       }}
       onmouseenter={() => {
+        isHovering = true;
+      }}
+      onfocusout={() => {
+        isHovering = false;
+      }}
+      onfocusin={() => {
         isHovering = true;
       }}
       onclick={() => {
@@ -654,15 +720,13 @@
       }}
     >
       {#if isHovering}
-        {#if large.current}
-          <p class="font-medium">Switch user</p>
-        {/if}
+        <span class={large.current ? "font-medium" : "sr-only"}>Switch user</span>
 
         <ArrowLeftRight size="36" strokeWidth="1.5" />
       {:else}
-        {#if large.current}
-          <p>{data.user.username}</p>
-        {/if}
+        <span class="max-lg:sr-only">
+          {data.user.username}
+        </span>
 
         {@html createAvatar(shapes, {
           seed: data.user.username,
@@ -695,13 +759,14 @@
       </button>
     {/if}
   </div>
-</div>
+</header>
 
 {#if !isPoppedUp || (isSearching && searchTerm)}
   <!-- Play bar -->
   <div
     class="playbg h-16 w-full fixed left-0 bottom-0 flex items-center justify-between px-2 overflow-hidden"
     style:view-transition-name="playbar"
+    aria-label="Audiobook player"
   >
     {#if !player}
       <p class="text-xl font-semibold">Loading...</p>
@@ -710,14 +775,16 @@
         <p class="font-medium md:font-bold text-xl iconbtn">
           <Music size="20" class="shrink-0" />
           {#snippet content()}
-            <span>{currentTitle.title}</span>
+            <span aria-label="Current title">{currentTitle.title}</span>
           {/snippet}
 
           <FadeInOut value={currentTitle.title} {content} />
         </p>
 
         {#snippet albumContent()}
-          <a class="font-medium text-lg max-md:hidden" href={`/user/${data.user.id}/album/${currentAlbum}`}>{currentTitle.album}</a>
+          <a class="font-medium text-lg max-md:hidden" href={`/user/${data.user.id}/album/${currentAlbum}`} aria-label="Current album"
+            >{currentTitle.album}</a
+          >
         {/snippet}
 
         <FadeInOut value={currentAlbum} content={albumContent} />
@@ -727,10 +794,13 @@
         <button class="items-center sm hidden md:flex" onclick={toggleRepeat} class:secondary={repeating === 0}>
           {#if repeating === 0}
             <ArrowRightToLine strokeWidth="1.5" />
+            <span class="sr-only">Repeating: off</span>
           {:else if repeating === 1}
             <Repeat strokeWidth="1.5" />
+            <span class="sr-only">Repeating: album</span>
           {:else}
             <Repeat1 strokeWidth="1.5" />
+            <span class="sr-only">Repeating: track</span>
           {/if}
         </button>
 
@@ -743,6 +813,7 @@
           }}
         >
           <SkipBack strokeWidth="1.5" fill="currentColor" />
+          <span class="sr-only">Skip back</span>
         </button>
 
         <button
@@ -754,12 +825,16 @@
         >
           {#if currentState === State.Paused}
             <Play size="32" strokeWidth="1.75" fill="currentColor" />
+            <span class="sr-only">Play</span>
           {:else if currentState === State.Playing}
             <Pause size="32" strokeWidth="1.75" fill="currentColor" />
+            <span class="sr-only">Pause</span>
           {:else if currentState === State.Buffering}
             <Loader size="32" strokeWidth="1.75" class="animate-spin" />
+            <span class="sr-only">Loading...</span>
           {:else if currentState === State.Errored}
             <X size="32" strokeWidth="1.75" />
+            <span class="sr-only">Failed to load</span>
           {/if}
         </button>
 
@@ -772,6 +847,7 @@
           }}
         >
           <SkipForward strokeWidth="1.5" fill="currentColor" />
+          <span class="sr-only">Skip forward</span>
         </button>
 
         {#if !(isSearching && searchTerm)}
@@ -782,21 +858,35 @@
             }}
           >
             <ChevronUp strokeWidth="1.5" />
+            <span class="sr-only">Open fullscreen player</span>
           </button>
         {/if}
       </div>
 
-      {#if large.current}
+      <div class="max-lg:sr-only">
         {#snippet timeContent()}
           <div class="flex gap-2 items-center justify-end">
-            <span class="text-xl">{currentTime === undefined ? "--:--" : secondStringify(currentTime)}</span>
-            <input type="range" class="w-[20vw]" max={Math.round(duration ?? 0)} value={currentTime ?? 0} onchange={seek} />
-            <span class="text-xl">{duration === undefined ? "--:--" : secondStringify(duration)}</span>
+            <span class="text-xl">
+              <span class="sr-only">Position: </span>
+              {currentTime === undefined ? "--:--" : secondStringify(currentTime)}
+            </span>
+            <input
+              type="range"
+              class="w-[20vw]"
+              max={Math.round(duration ?? 0)}
+              value={currentTime ?? 0}
+              onchange={seek}
+              aria-label="Seeker bar"
+            />
+            <span class="text-xl">
+              <span class="sr-only">Duration: </span>
+              {duration === undefined ? "--:--" : secondStringify(duration)}
+            </span>
           </div>
         {/snippet}
 
         <FadeInOut content={timeContent} value={duration} />
-      {/if}
+      </div>
     {:else}
       <div>
         <p class="text-xl font-semibold">Welcome to AudioShelf!</p>

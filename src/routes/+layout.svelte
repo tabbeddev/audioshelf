@@ -1,12 +1,13 @@
 <script lang="ts">
   import "../app.css";
-  import type { Snippet } from "svelte";
+  import { onMount, type Snippet } from "svelte";
   import type { LayoutData } from "./$types";
-  import { page, navigating } from "$app/state";
+  import { page, navigating, updated } from "$app/state";
   import { redirect } from "@sveltejs/kit";
-  import { CircleX, Info, Loader, TriangleAlert, X } from "@lucide/svelte";
+  import { Check, CircleX, Info, Loader, TriangleAlert, X } from "@lucide/svelte";
   import { fade, slide } from "svelte/transition";
   import { onNavigate } from "$app/navigation";
+  import { version } from "$app/environment";
 
   const { data, children }: { data: LayoutData; children: Snippet<[]> } = $props();
   let notification: App.Notification[] = $state([]);
@@ -55,14 +56,26 @@
       });
     });
   });
+
+  // Has updated check
+
+  let hasUpdated = $state(false);
+
+  onMount(() => {
+    const lastKnownVersion = localStorage.getItem("lastKnownVersion");
+    if (lastKnownVersion && lastKnownVersion !== version) {
+      hasUpdated = true;
+      console.log("AudioShelf was updated");
+    }
+    localStorage.setItem("lastKnownVersion", version);
+  });
 </script>
 
 <svelte:window {onmessage} />
-<svelte:head>
-  <title>AudioShelf</title>
-</svelte:head>
 
-{@render children()}
+<div aria-hidden={hasUpdated}>
+  {@render children()}
+</div>
 
 <div class="right-0 bottom-0 fixed p-2 flex flex-col-reverse gap-1 z-30" style:view-transition-name="noti-box">
   {#each notification as not, index}
@@ -99,6 +112,30 @@
     <div class="flex items-center gap-2 text-2xl">
       <Loader size="40" class="animate-spin" />
       Loading ...
+    </div>
+  </div>
+{/if}
+
+{#if hasUpdated}
+  <div transition:fade aria-hidden="true" class="fixed top-0 left-0 opacity-75 bg-black w-screen h-screen z-40"></div>
+  <div transition:fade class="secondbg fixed left-1/2 top-1/2 -translate-1/2 z-50 text-center" role="dialog">
+    <p class="text-2xl font-bold mb-2">Hooray! AudioShelf&nbsp;was&nbsp;updated!</p>
+    <p class="text-xl font-medium mb-4">You're now on {version}.</p>
+    <p>
+      The changelog can be found on the
+      <a class="text-blue-200" target="_blank" href="https://github.com/tabbeddev/audioshelf"> GitHub of AudioShelf </a>.
+    </p>
+
+    <div class="flex justify-center mt-4">
+      <button
+        class="iconbtn"
+        onclick={() => {
+          hasUpdated = false;
+        }}
+      >
+        <Check />
+        Close
+      </button>
     </div>
   </div>
 {/if}
