@@ -5,6 +5,15 @@ import { build, files, version, prerendered } from "$service-worker";
 const APP_SHELL_CACHE = "app-shell-" + version;
 const DATA_CACHE = "audiobook-data-v1";
 
+function fetchWithTimeout(resource: RequestInfo, options: RequestInit = {}, timeout = 2000): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  return fetch(resource, {
+    ...options,
+    signal: controller.signal,
+  }).finally(() => clearTimeout(id));
+}
+
 // [Cache] all static files
 // @ts-ignore it is an event
 self.addEventListener("install", (event: InstallEvent) => {
@@ -44,11 +53,43 @@ self.addEventListener("fetch", (event: FetchEvent) => {
   )
     return;
 
+  function respondWithCacheFirst(cacheName: string, timeout: number) {
+    return caches.open(cacheName).then(async (cache) => {
+      const cached = await cache.match(request);
+      if (cached) return cached;
+
+      try {
+        const response = await fetchWithTimeout(request, {}, timeout);
+        if (response.status === 200) cache.put(request, response.clone());
+        return response;
+      } catch {
+        return new Response(JSON.stringify({ message: "Connect to your server and try again" }), {
+          status: 503,
+          statusText: "Offline or not cached",
+        });
+      }
+    });
+  }
+
+  // Static Data
+  const isStatic = /\.(js|css|png)$/.test(url.pathname);
+  if (isStatic) {
+    event.respondWith(respondWithCacheFirst(APP_SHELL_CACHE, 500));
+    return;
+  }
+
+  // Handle Media Data
+  const isMedia = /^\/api\/(?:albums|titles)\/\d+\/?$/m.test(url.pathname);
+  if (isMedia) {
+    event.respondWith(respondWithCacheFirst(DATA_CACHE, 2000));
+    return;
+  }
+
   // [Cache and Load from Cache]
   event.respondWith(
-    caches.open(/^\/api\/(?:albums|titles)\/\d+\/?$/m.exec(url.pathname) ? DATA_CACHE : APP_SHELL_CACHE).then(async (cache) => {
+    caches.open(APP_SHELL_CACHE).then(async (cache) => {
       try {
-        const response = await fetch(request);
+        const response = await fetchWithTimeout(request);
         if (!response.ok && response.status !== 404) throw new Error();
         if (response.status === 200) cache.put(request, response.clone());
         return response;

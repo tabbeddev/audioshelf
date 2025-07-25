@@ -86,7 +86,7 @@
     <div class="flex max-md:justify-center gap-2">
       <button
         class="iconbtn mt-2 secondary"
-        onclick={() => goto(`/api/albums/${data.album?.id}/download`)}
+        onclick={() => (window.location.href = `/api/albums/${data.album?.id}/download`)}
         disabled={!data.serverAvailable}
       >
         <FolderDown />

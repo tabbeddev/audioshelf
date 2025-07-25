@@ -2,7 +2,7 @@
   import "../app.css";
   import { onMount, type Snippet } from "svelte";
   import type { LayoutData } from "./$types";
-  import { page, navigating, updated } from "$app/state";
+  import { page, navigating } from "$app/state";
   import { redirect } from "@sveltejs/kit";
   import { Check, CircleX, Info, Loader, TriangleAlert, X } from "@lucide/svelte";
   import { fade, slide } from "svelte/transition";
@@ -105,7 +105,7 @@
 
 {#if loading}
   <div
-    class="fixed left-0 top-0 w-screen h-screen flex items-center justify-center"
+    class="fixed left-0 top-0 w-screen h-screen flex items-center justify-center z-40"
     style:background-color="rgba(23, 33, 39, 75%)"
     style:view-transition-name="loading-overlay"
   >

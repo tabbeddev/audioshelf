@@ -1,6 +1,6 @@
 import { lookup } from "mime-types";
 import { transformTags } from "./id3.ts";
-import { db } from "./server/prisma.ts";
+import { db } from "./prisma.ts";
 import { readdirSync, realpathSync, lstatSync } from "node:fs";
 import { parseFile, type IAudioMetadata } from "music-metadata";
 

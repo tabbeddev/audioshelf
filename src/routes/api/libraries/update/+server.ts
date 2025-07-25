@@ -1,6 +1,6 @@
 import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { scrapeLibraries } from "$lib/manageData.ts";
+import { scrapeLibraries } from "$lib/server/manageData";
 
 export const POST: RequestHandler = async ({ request }) => {
   const { rebuild = false }: { rebuild: boolean } = (await request.json()) ?? {};

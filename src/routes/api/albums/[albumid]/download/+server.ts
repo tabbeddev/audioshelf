@@ -20,7 +20,7 @@ export const GET: RequestHandler = async ({ params }) => {
   if (!album) return error(404, { message: "No album found" });
 
   const lengthTracks = Math.max(...album.titles.map((v) => v.track || 0), 10).toString().length;
-  const lengthDiscs = Math.max(...album.titles.map((v) => v.disk || 0), 10).toString().length;
+  const lengthDiscs = album.titles.map((v) => v.disk).toString().length;
 
   const zip = new JSZip();
   const zipFolder = zip.folder(getArtistsOfAlbum(album.titles))!.folder(album.name)!;
@@ -36,5 +36,10 @@ export const GET: RequestHandler = async ({ params }) => {
 
   const file = await zip.generateAsync({ type: "blob" });
 
-  return new Response(file);
+  return new Response(file, {
+    headers: {
+      "Content-Disposition": `attachment; filename=${album.name}.zip`,
+      "Content-Type": "application/zip",
+    },
+  });
 };
