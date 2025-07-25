@@ -1,4 +1,4 @@
-# LocalShelf
+# AudioShelf
 
 The Jellyfin equivalent, but for music and audiobooks
 
